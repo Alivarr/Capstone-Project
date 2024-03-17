@@ -5,6 +5,15 @@ const {
   fetchUsers,
   authenticate,
   findUserWithToken,
+  createProducts,
+  getProducts,
+  getSingleProduct,
+  createCart,
+  getCart,
+  updateCart,
+  createOrder,
+  getOrders,
+  createReview
 } = require('./db');
 const express = require('express');
 const app = express();
@@ -25,7 +34,7 @@ const isLoggedIn = async(req, res, next)=> {
   }
 };
 
-
+/*User Routes*/
 app.post('/api/auth/login', async(req, res, next)=> {
   try {
     res.send(await authenticate(req.body));
@@ -53,6 +62,26 @@ app.get('/api/users', async(req, res, next)=> {
   }
 });
 
+/*Product Routes*/
+app.post('/api/products', createProducts);
+app.get('/api/products', getProducts);
+app.get('/api/products/:id', getSingleProduct);
+
+/*Cart Routes*/
+app.post('/api/cart', createCart);
+app.get('/api/cart/:userId', getCart);
+app.put('/api/cart', updateCart);
+
+/*TIER 2 Routes*/
+
+/*Order Routes*/
+app.post('/api/orders', createOrder);
+app.get('/api/orders/:userId', getOrders);
+
+/*Review Routes*/
+app.post('/api/reviews/:productId', createReview);
+
+/*Error Handling*/
 app.use((err, req, res, next)=> {
   console.log(err);
   res.status(err.status || 500).send({ error: err.message ? err.message : err });
