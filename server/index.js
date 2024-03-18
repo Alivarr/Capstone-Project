@@ -38,14 +38,28 @@ const isLoggedIn = async(req, res, next)=> {
 };
 
 /*User Routes*/
-app.post('/api/auth/login', async(req, res, next)=> {
+app.post('/api/auth/signup', async(req, res, next)=> {
   try {
-    res.send(await authenticate(req.body));
+    const user = await createUser(req.body);
+    const token = jwt.sign({ id: user.id }, JWT);
+    res.send({ token, user });
   }
   catch(ex){
     next(ex);
   }
 });
+
+app.post('/api/auth/login', async(req, res, next)=> {
+  try {
+    const user = await authenticate(req.body);
+    const token = jwt.sign({ id: user.id }, JWT);
+    res.send({ token, user });
+  }
+  catch(ex){
+    next(ex);
+  }
+});
+
 
 app.get('/api/auth/me', isLoggedIn, (req, res, next)=> {
   try {
@@ -65,24 +79,47 @@ app.get('/api/users', async(req, res, next)=> {
   }
 });
 
-// /*Product Routes*/
-// app.post('/api/products', createProducts);
-// app.get('/api/products', getProducts);
-// app.get('/api/products/:id', getSingleProduct);
+/*Product Routes*/
+app.post('/api/products', async(req, res, next)=> {
+  try {
+    res.send(await createProducts(req.body));
+  }
+  catch(ex){
+    next(ex);
+  }
+});
 
-// /*Cart Routes*/
-// app.post('/api/cart', createCart);
-// app.get('/api/cart/:userId', getCart);
-// app.put('/api/cart', updateCart);
+app.get('/api/products', async(req, res, next)=> {
+  try {
+    res.send(await getProducts());
+  }
+  catch(ex){
+    next(ex);
+  }
+});
 
-// /*TIER 2 Routes*/
+app.get('/api/products/:id', async(req, res, next)=> {
+  try {
+    res.send(await getSingleProduct(req.params.id));
+  }
+  catch(ex){
+    next(ex);
+  }
+});
 
-// /*Order Routes*/
-// app.post('/api/orders', createOrder);
-// app.get('/api/orders/:userId', getOrders);
+/*Cart Routes*/
+app.post('/api/cart', createCart);
+app.get('/api/cart/:userId', getCart);
+app.put('/api/cart', updateCart);
 
-// /*Review Routes*/
-// app.post('/api/reviews/:productId', createReview);
+/*TIER 2 Routes*/
+
+/*Order Routes*/
+app.post('/api/orders', createOrder);
+app.get('/api/orders/:userId', getOrders);
+
+/*Review Routes*/
+app.post('/api/reviews/:productId', createReview);
 
 /*Error Handling*/
 app.use((err, req, res, next)=> {

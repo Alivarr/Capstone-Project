@@ -65,13 +65,15 @@ const createTables = async()=> {
   await client.query(SQL);
 };
 
-const createUser = async({ username, password})=> {
+const createUser = async({ username, password, email, isAdmin, favorite_number })=> {
   const SQL = `
-    INSERT INTO users(id, username, password) VALUES($1, $2, $3) RETURNING *
+    INSERT INTO users(id, username, password, email, isAdmin, favorite_number) 
+    VALUES($1, $2, $3, $4, $5, $6) 
+    RETURNING *
   `;
-  const response = await client.query(SQL, [uuid.v4(), username, await bcrypt.hash(password, 5)]);
+  const response = await client.query(SQL, [uuid.v4(), username, await bcrypt.hash(password, 5), email, isAdmin, favorite_number]);
   return response.rows[0];
-};
+}
 
 const authenticate = async({ username, password })=> {
   const SQL = `
@@ -122,7 +124,9 @@ const fetchUsers = async()=> {
 
 //need to make a createProducts function that takes in a product object and adds it to the database
 createProducts = async()=> {
-  const SQL = ``;
+  const SQL = `
+    
+     `;
   await client.query(SQL);
 };
 
