@@ -13,7 +13,16 @@ const {
   updateCart,
   createOrder,
   getOrders,
-  createReview
+  createReview,
+  getLimitedProducts,
+  getCategories,
+  getSingleCategory,
+  getAllCarts,
+  deleteUser,
+  updateUser,
+  deleteProduct,
+  updateProduct,
+  deleteCart
 } = require('./db');
 const express = require('express');
 const app = express();
@@ -78,6 +87,7 @@ app.get('/api/users', async(req, res, next)=> {
     next(ex);
   }
 });
+
 
 /*Product Routes*/
 app.post('/api/products', async(req, res, next)=> {
