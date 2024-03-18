@@ -10,7 +10,7 @@ if(JWT === 'shhh'){
 
 const createTables = async()=> {
   const SQL = `
-    DROP TABLE IF EXISTS users;
+    DROP TABLE IF EXISTS users CASCADE;
     CREATE TABLE users(
       id UUID PRIMARY KEY,
       username VARCHAR(20) UNIQUE NOT NULL,
@@ -20,7 +20,7 @@ const createTables = async()=> {
       favorite_number INTEGER 
     );
 
-    DROP TABLE IF EXISTS products;
+    DROP TABLE IF EXISTS products CASCADE;
     CREATE TABLE products(
       id UUID PRIMARY KEY,
       name VARCHAR(255) UNIQUE NOT NULL,
@@ -31,33 +31,36 @@ const createTables = async()=> {
       imageUrl VARCHAR(255)
     );
 
-    DROP TABLE IF EXISTS carts;
+    DROP TABLE IF EXISTS carts CASCADE;
     CREATE TABLE carts(
       id UUID PRIMARY KEY,
-      userId UUID REFERENCES users(id),
-      products UUID[]  REFERENCES products(id),
-      quantites INTEGER[]
+      userId UUID REFERENCES users(id)
     );
-
-    DROP TABLE IF EXISTS orders;
+  
+    DROP TABLE IF EXISTS cart_products CASCADE;
+    CREATE TABLE cart_products(
+      cartId UUID REFERENCES carts(id),
+      productId UUID REFERENCES products(id),
+      quantity INTEGER,
+      PRIMARY KEY (cartId, productId)
+    );
+  
+    DROP TABLE IF EXISTS orders CASCADE;
     CREATE TABLE orders(
       id UUID PRIMARY KEY,
       userId UUID REFERENCES users(id),
-      products UUID[]  REFERENCES products(id),
-      quantites INTEGER[],
       totalPrice DECIMAL(10, 2),
       date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
-
-    DROP TABLE IF EXISTS reviews;
-    CREATE TABLE reviews(
-      id UUID PRIMARY KEY,
-      userId UUID REFERENCES users(id),
+  
+    DROP TABLE IF EXISTS order_products CASCADE;
+    CREATE TABLE order_products(
+      orderId UUID REFERENCES orders(id),
       productId UUID REFERENCES products(id),
-      rating INTEGER,
-      comment TEXT
-      postedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      quantity INTEGER,
+      PRIMARY KEY (orderId, productId)
     );
+   
   `;
   await client.query(SQL);
 };
