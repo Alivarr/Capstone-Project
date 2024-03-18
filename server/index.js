@@ -17,6 +17,9 @@ const {
 } = require('./db');
 const express = require('express');
 const app = express();
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+const { JWT } = process.env;
 app.use(express.json());
 
 //for deployment only
@@ -62,24 +65,24 @@ app.get('/api/users', async(req, res, next)=> {
   }
 });
 
-/*Product Routes*/
-app.post('/api/products', createProducts);
-app.get('/api/products', getProducts);
-app.get('/api/products/:id', getSingleProduct);
+// /*Product Routes*/
+// app.post('/api/products', createProducts);
+// app.get('/api/products', getProducts);
+// app.get('/api/products/:id', getSingleProduct);
 
-/*Cart Routes*/
-app.post('/api/cart', createCart);
-app.get('/api/cart/:userId', getCart);
-app.put('/api/cart', updateCart);
+// /*Cart Routes*/
+// app.post('/api/cart', createCart);
+// app.get('/api/cart/:userId', getCart);
+// app.put('/api/cart', updateCart);
 
-/*TIER 2 Routes*/
+// /*TIER 2 Routes*/
 
-/*Order Routes*/
-app.post('/api/orders', createOrder);
-app.get('/api/orders/:userId', getOrders);
+// /*Order Routes*/
+// app.post('/api/orders', createOrder);
+// app.get('/api/orders/:userId', getOrders);
 
-/*Review Routes*/
-app.post('/api/reviews/:productId', createReview);
+// /*Review Routes*/
+// app.post('/api/reviews/:productId', createReview);
 
 /*Error Handling*/
 app.use((err, req, res, next)=> {
