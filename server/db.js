@@ -13,10 +13,10 @@ const createTables = async()=> {
     DROP TABLE IF EXISTS users CASCADE;
     CREATE TABLE users(
       id UUID PRIMARY KEY,
-      username VARCHAR(20) UNIQUE NOT NULL,
+      username VARCHAR(100) UNIQUE NOT NULL,
       password VARCHAR(100) NOT NULL,
       email VARCHAR(100) UNIQUE NOT NULL,
-      isAdmin BOOLEAN DEFAULT FALSE,
+      isAdmin BOOLEAN,
       favorite_number INTEGER
     );
 
@@ -33,8 +33,8 @@ const createTables = async()=> {
       description TEXT,
       price DECIMAL(10, 2),
       category UUID REFERENCES categories(id),
-      rating INTEGER,
-      imageUrl TEXT
+      rating DECIMAL(2, 1),
+      imageUrl TEXT,
     );
 
     DROP TABLE IF EXISTS carts CASCADE;
@@ -66,6 +66,14 @@ const createTables = async()=> {
       productId UUID REFERENCES products(id),
       quantity INTEGER,
       PRIMARY KEY (orderId, productId)
+    );
+
+    DROP TABLE IF EXISTS reviews CASCADE;
+    CREATE TABLE reviews(
+      id UUID PRIMARY KEY,
+      productId UUID REFERENCES products(id),
+      userId UUID REFERENCES users(id),
+      review TEXT
     );
    
   `;
@@ -325,6 +333,32 @@ createReview = async({ productId, userId, review })=> {
   return response.rows[0];
 };
 
+//need to make a getReviews function that would retrieve a products reviews based on the product.id
+getReviews = async(productId)=> {
+  const SQL = `
+    SELECT * FROM reviews WHERE productId=$1;
+  `;
+  const response = await client.query(SQL, [productId]);
+  return response.rows;
+};
+
+//a list of all reviews a user has made
+getUsersReviews = async(userId)=> {
+  const SQL = `
+    SELECT * FROM reviews WHERE userId=$1;
+  `;
+  const response = await client.query(SQL, [userId]);
+  return response.rows;
+};
+
+//delete a review
+deleteReview = async(id)=> {
+  const SQL = `
+    DELETE FROM reviews WHERE id=$1;
+  `;
+  await client.query(SQL, [id]);
+};
+
 module.exports = {
   client,
   createTables,
@@ -349,5 +383,9 @@ module.exports = {
   updateUser,
   deleteProduct,
   updateProduct,
-  deleteCart
+  deleteCart,
+  fetchSingleUser,
+  getUsersReviews,
+  getReviews,
+  deleteReview
 };
