@@ -10,8 +10,7 @@ if(JWT === 'shhh'){
 
 const createTables = async()=> {
   const SQL = `
-    DROP TABLE IF EXISTS users CASCADE;
-    CREATE TABLE users(
+    CREATE TABLE IF NOT EXSISTS users(
       id UUID PRIMARY KEY,
       username VARCHAR(100) UNIQUE NOT NULL,
       password VARCHAR(100) NOT NULL,
@@ -20,56 +19,49 @@ const createTables = async()=> {
       favorite_number INTEGER
     );
 
-    DROP TABLE IF EXISTS categories CASCADE;
-    CREATE TABLE categories(
+    CREATE TABLE IF NOT EXSISTS categories(
       id UUID PRIMARY KEY,
       name VARCHAR(20) UNIQUE NOT NULL
     );
 
-    DROP TABLE IF EXISTS products CASCADE;
-    CREATE TABLE products(
+    CREATE TABLE IF NOT EXSISTS products(
       id UUID PRIMARY KEY,
       name VARCHAR(100) UNIQUE NOT NULL,
       description TEXT,
       price DECIMAL(10, 2),
       category UUID REFERENCES categories(id),
       rating DECIMAL(2, 1),
-      imageUrl TEXT,
+      imageUrl TEXT
     );
 
-    DROP TABLE IF EXISTS carts CASCADE;
-    CREATE TABLE carts(
+    CREATE TABLE IF NOT EXSISTS carts(
       id UUID PRIMARY KEY,
       userId UUID REFERENCES users(id),
       date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   
-    DROP TABLE IF EXISTS cart_products CASCADE;
-    CREATE TABLE cart_products(
+    CREATE TABLE IF NOT EXSISTS cart_products(
       cartId UUID REFERENCES carts(id),
       productId UUID REFERENCES products(id),
       quantity INTEGER,
       PRIMARY KEY (cartId, productId)
     );
   
-    DROP TABLE IF EXISTS orders CASCADE;
-    CREATE TABLE orders(
+    CREATE TABLE IF NOT EXSISTS orders(
       id UUID PRIMARY KEY,
       userId UUID REFERENCES users(id),
       totalPrice DECIMAL(10, 2),
       date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   
-    DROP TABLE IF EXISTS order_products CASCADE;
-    CREATE TABLE order_products(
+    CREATE TABLE IF NOT EXSISTS order_products(
       orderId UUID REFERENCES orders(id),
       productId UUID REFERENCES products(id),
       quantity INTEGER,
       PRIMARY KEY (orderId, productId)
     );
 
-    DROP TABLE IF EXISTS reviews CASCADE;
-    CREATE TABLE reviews(
+    CREATE TABLE IF NOT EXSISTS reviews(
       id UUID PRIMARY KEY,
       productId UUID REFERENCES products(id),
       userId UUID REFERENCES users(id),

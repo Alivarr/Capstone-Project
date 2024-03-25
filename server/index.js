@@ -347,10 +347,10 @@ const init = async()=> {
   console.log('tables created');
 
   const [moe, lucy, ethyl, curly] = await Promise.all([
-    createUser({ username: 'moe', password: 'm_pw'}),
-    createUser({ username: 'lucy', password: 'l_pw'}),
-    createUser({ username: 'ethyl', password: 'e_pw'}),
-    createUser({ username: 'curly', password: 'c_pw'})
+    createUser({ username: 'moe', password: 'm_pw', email: 'test1@test.com', isAdmin: true}),
+    createUser({ username: 'lucy', password: 'l_pw', email: 'test2@test.com', isAdmin: false}),
+    createUser({ username: 'ethyl', password: 'e_pw', email: 'test3@test.com', isAdmin: false}),
+    createUser({ username: 'curly', password: 'c_pw', email: 'test4@test.com', isAdmin: true})
   ]);
 
   const [product1, product2, product3, product4] = await Promise.all([
@@ -383,17 +383,10 @@ const init = async()=> {
 
     console.log(await fetchUsers());
     console.log(await getProducts());
-    console.log(await getSingleProduct(1));
     console.log(await getLimitedProducts());
     console.log(await getCategories());
-    console.log(await getSingleCategory(1));
-    console.log(await getCart(1));
-    console.log(await getOrders(1));
-    console.log(await getReviews(1));
-    console.log(await getUsersReviews(1));
 
   app.listen(port, ()=> console.log(`listening on port ${port}`));
 };
 
 init();
-
