@@ -26,7 +26,9 @@ const {
   fetchSingleUser,
   getUsersReviews,
   getReviews,
-  deleteReview
+  deleteReview,
+  getUserAccountInfo,
+  getUserOrders
 } = require('./db');
 const express = require('express');
 const app = express();
@@ -330,6 +332,29 @@ app.get('/api/reviews/:userId', async(req, res, next)=> {
     next(ex);
   }
 });
+
+/*User Account Info Routes*/
+
+//this Route will get a user's account information
+app.get('/api/account/:userId', async(req, res, next)=> {
+  try {
+    res.send(await getUserAccountInfo(req.params.userId));
+  }
+  catch(ex){
+    next(ex);
+  }
+});
+
+//this Route will get all orders for a user
+app.get('/api/account/orders/:userId', async(req, res, next)=> {
+  try {
+    res.send(await getUserOrders(req.params.userId));
+  }
+  catch(ex){
+    next(ex);
+  }
+});
+
 
 
 /*Error Handling*/

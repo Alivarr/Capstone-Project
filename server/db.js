@@ -351,6 +351,25 @@ deleteReview = async(id)=> {
   await client.query(SQL, [id]);
 };
 
+//retrieve the users info for the account page
+getUserAccountInfo = async()=> {
+  const SQL = `
+    SELECT * FROM users;
+  `;
+  const response = await client.query(SQL);
+  return response.rows;
+};
+
+//retrieve the users orders for the account page
+getUserOrders = async()=> {
+  const SQL = `
+    SELECT * FROM orders;
+  `;
+  const response = await client.query(SQL);
+  return response.rows;
+};
+
+
 module.exports = {
   client,
   createTables,
@@ -379,5 +398,7 @@ module.exports = {
   fetchSingleUser,
   getUsersReviews,
   getReviews,
-  deleteReview
+  deleteReview,
+  getUserAccountInfo,
+  getUserOrders
 };
