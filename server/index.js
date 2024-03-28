@@ -28,7 +28,10 @@ const {
   getReviews,
   deleteReview,
   getUserAccountInfo,
-  getUserOrders
+  getUserOrders,
+  getCartProducts,
+  addProductToCart,
+  deleteProductFromCart
 } = require('./db');
 const express = require('express');
 const app = express();
@@ -355,6 +358,37 @@ app.get('/api/account/orders/:userId', async(req, res, next)=> {
   }
 });
 
+/*Cart Product Routes*/
+
+//this Route will get all products in a user's cart
+app.get('/api/cart/products/:userId', async(req, res, next)=> {
+  try {
+    res.send(await getCartProducts(req.params.userId));
+  }
+  catch(ex){
+    next(ex);
+  }
+});
+
+//this Route will add a product to a user's cart
+app.post('/api/cart/products/:userId', async(req, res, next)=> {
+  try {
+    res.send(await addProductToCart(req.params.userId, req.body));
+  }
+  catch(ex){
+    next(ex);
+  }
+});
+
+//this Route will delete a product from a user's cart
+app.delete('/api/cart/products/:userId', async(req, res, next)=> {
+  try {
+    res.send(await deleteProductFromCart(req.params.userId, req.body));
+  }
+  catch(ex){
+    next(ex);
+  }
+});
 
 
 /*Error Handling*/

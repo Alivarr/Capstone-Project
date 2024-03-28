@@ -10,59 +10,62 @@ if(JWT === 'shhh'){
 
 const createTables = async()=> {
   const SQL = `
-    CREATE TABLE IF NOT EXSISTS users(
+    CREATE TABLE IF NOT EXISTS users(
       id UUID PRIMARY KEY,
       username VARCHAR(100) UNIQUE NOT NULL,
       password VARCHAR(100) NOT NULL,
       email VARCHAR(100) UNIQUE NOT NULL,
+      firstName VARCHAR(100),
+      lastName VARCHAR(100),
       isAdmin BOOLEAN,
+      createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       favorite_number INTEGER
     );
 
-    CREATE TABLE IF NOT EXSISTS categories(
-      id UUID PRIMARY KEY,
+    CREATE TABLE IF NOT EXISTS categories(
+      category_id UUID PRIMARY KEY,
       name VARCHAR(20) UNIQUE NOT NULL
     );
 
-    CREATE TABLE IF NOT EXSISTS products(
-      id UUID PRIMARY KEY,
+    CREATE TABLE IF NOT EXISTS products(
+      product_id UUID PRIMARY KEY,
       name VARCHAR(100) UNIQUE NOT NULL,
       description TEXT,
       price DECIMAL(10, 2),
-      category UUID REFERENCES categories(id),
+      category UUID REFERENCES categories(category_id),
       rating DECIMAL(2, 1),
-      imageUrl TEXT
+      imageUrl VARCHAR(100)
     );
 
-    CREATE TABLE IF NOT EXSISTS carts(
-      id UUID PRIMARY KEY,
-      userId UUID REFERENCES users(id),
+    CREATE TABLE IF NOT EXISTS carts(
+      carts_id UUID PRIMARY KEY,
+      userId UUID REFERENCES users(id) ON DELETE CASCADE,
       date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   
-    CREATE TABLE IF NOT EXSISTS cart_products(
-      cartId UUID REFERENCES carts(id),
-      productId UUID REFERENCES products(id),
+    CREATE TABLE IF NOT EXISTS cart_products(
+      cartId UUID REFERENCES carts(carts_id),
+      productId UUID REFERENCES products(product_id),
       quantity INTEGER,
       PRIMARY KEY (cartId, productId)
     );
   
-    CREATE TABLE IF NOT EXSISTS orders(
-      id UUID PRIMARY KEY,
+    CREATE TABLE IF NOT EXISTS orders(
+      order_id UUID PRIMARY KEY,
       userId UUID REFERENCES users(id),
       totalPrice DECIMAL(10, 2),
       date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   
-    CREATE TABLE IF NOT EXSISTS order_products(
+    CREATE TABLE IF NOT EXISTS order_products(
       orderId UUID REFERENCES orders(id),
       productId UUID REFERENCES products(id),
       quantity INTEGER,
       PRIMARY KEY (orderId, productId)
     );
 
-    CREATE TABLE IF NOT EXSISTS reviews(
-      id UUID PRIMARY KEY,
+    CREATE TABLE IF NOT EXISTS reviews(
+      review_id UUID PRIMARY KEY,
       productId UUID REFERENCES products(id),
       userId UUID REFERENCES users(id),
       review TEXT
@@ -73,13 +76,15 @@ const createTables = async()=> {
 };
 
 //Create user is going to take the inputed information from the user and add it to the database
-const createUser = async({ username, password, email, isAdmin, favorite_number })=> {
+const createUser = async({ username, password, email, firstName, lastName, isAdmin, createdAt, favorite_number })=> {
+  const SALT_COUNT = 10;
+  const hashedPassword = await bcrypt.hash(password, SALT_COUNT);
   const SQL = `
-    INSERT INTO users(id, username, password, email, isAdmin, favorite_number) 
-    VALUES($1, $2, $3, $4, $5, $6) 
+    INSERT INTO users(id, username, password, email, firstName, lastName, isAdmin, createdAt, favorite_number) 
+    VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9) 
     RETURNING *
   `;
-  const response = await client.query(SQL, [uuid.v4(), username, await bcrypt.hash(password, 5), email, isAdmin, favorite_number]);
+  const response = await client.query(SQL, [uuid.v4(), username, hashedPassword, email, firstName, lastName, isAdmin, createdAt, favorite_number]);
   return response.rows[0];
 }
 
@@ -167,7 +172,7 @@ deleteUser = async(id)=> {
 //need to make a createProducts function that takes in a product object and adds it to the database
 createProducts = async({ name, description, price, category, rating, imageUrl })=> {
   const SQL = `
-    INSERT INTO products(id, name, description, price, category, rating, imageUrl) 
+    INSERT INTO products(product_id, name, description, price, category, rating, imageUrl) 
     VALUES($1, $2, $3, $4, $5, $6, $7) 
     RETURNING *
   `;
@@ -194,9 +199,12 @@ getLimitedProducts = async()=> {
 };
 
 //need to make a getSingleProduct function that takes in a product.id from the database and returns on a screen with the info on that product
-getSingleProduct = async(id)=> {
-  const SQL =``;
-  await client.query(SQL);
+getSingleProduct = async(product_id)=> {
+  const SQL = `
+    SELECT * FROM products WHERE product_id=$1;
+  `;
+  const response = await client.query(SQL, [product_id]);
+  return response.rows[0];
 };
 
 //want to make an updateProduct function that updates a product in the database incase
@@ -204,7 +212,7 @@ updateProduct = async({ name, description, price, category, rating, imageUrl })=
   const SQL = `
     UPDATE products
     SET name=$1, description=$2, price=$3, category=$4, rating=$5, imageUrl=$6
-    WHERE id=$7
+    WHERE product_id=$7
     RETURNING *
   `;
   const response = await client.query(SQL, [name, description, price, category, rating, imageUrl]);
@@ -212,11 +220,11 @@ updateProduct = async({ name, description, price, category, rating, imageUrl })=
 }
 
 //want to make a deleteProduct function that deletes a product from the database incase
-deleteProduct = async(id)=> {
+deleteProduct = async(product_id)=> {
   const SQL = `
-    DELETE FROM products WHERE id=$1;
+    DELETE FROM products WHERE product_id=$1;
   `;
-  await client.query(SQL, [id]);
+  await client.query(SQL, [product_id]);
 };
 
 //want to make a getCategories function that returns all the categories from the database
@@ -229,11 +237,11 @@ getCategories = async()=> {
 };
 
 //Want to make a get single category function that returns all the products from a single category
-getSingleCategory = async(id)=> {
+getSingleCategory = async(category_id)=> {
   const SQL = `
-    SELECT * FROM categories WHERE id=$1;
+    SELECT * FROM categories WHERE category_id=$1;
   `;
-  const response = await client.query(SQL, [id]);
+  const response = await client.query(SQL, [category_id]);
   return response.rows[0];
 };
 
@@ -250,7 +258,7 @@ getAllCarts = async()=> {
 //need to make a createCart function that creates a cart for a user, might need to add the date to the cart
 createCart = async(userId)=> {
   const SQL = `
-    INSERT INTO carts(id, userId) 
+    INSERT INTO carts(cart_id, userId) 
     VALUES($1, $2) 
     RETURNING *
   `;
@@ -369,6 +377,36 @@ getUserOrders = async()=> {
   return response.rows;
 };
 
+//cart_products
+
+//get all cart products
+getCartProducts = async()=> {
+  const SQL = `
+    SELECT * FROM cart_products;
+  `;
+  const response = await client.query(SQL);
+  return response.rows;
+};
+
+//add a product to a cart
+addProductToCart = async({ cartId, productId, quantity })=> {
+  const SQL = `
+    INSERT INTO cart_products(cartId, productId, quantity) 
+    VALUES($1, $2, $3) 
+    RETURNING *
+  `;
+  const response = await client.query(SQL, [cartId, productId, quantity]);
+  return response.rows[0];
+};
+
+//delete a product from a cart
+deleteProductFromCart = async({ cartId, productId })=> {
+  const SQL = `
+    DELETE FROM cart_products WHERE cartId=$1 AND productId=$2;
+  `;
+  await client.query(SQL, [cartId, productId]);
+};
+
 
 module.exports = {
   client,
@@ -400,5 +438,8 @@ module.exports = {
   getReviews,
   deleteReview,
   getUserAccountInfo,
-  getUserOrders
+  getUserOrders,
+  getCartProducts,
+  addProductToCart,
+  deleteProductFromCart
 };
