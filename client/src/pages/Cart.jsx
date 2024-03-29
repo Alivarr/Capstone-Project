@@ -7,76 +7,32 @@ import { Link } from 'react-router-dom';
 const Cart = () => {
   const { user } = useAuth();
   const [cart, setCart] = useState([]);
-  const [products, setProducts] = useState([]);
-  const [quantity, setQuantity] = useState(1);
 
   useEffect(() => {
-    async function getCart() {
-      const response = await axios.get('http://localhost:3000/api/cart', {
+    const fetchCart = async () => {
+      const response = await axios.get(`http://localhost:3000/api/cart/${user.id}`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
       });
       setCart(response.data);
+    };
+
+    if (user) {
+      fetchCart();
     }
-
-    getCart();
-  }, []);
-
-  useEffect(() => {
-    async function getProducts() {
-      const response = await axios.get('http://localhost:3000/api/products');
-      setProducts(response.data);
-    }
-
-    getProducts();
-  }, []);
-
-  async function handleAddProduct(event) {
-    event.preventDefault();
-    const productId = event.target.productId.value;
-    const product = products.find((product) => product.product_id === productId);
-    const cartId = cart.carts_id;
-    const response = await axios.post('http://localhost:3000/api/cart/products', {
-      cartId,
-      productId,
-      quantity,
-    }, {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem('token')}`,
-      },
-    });
-
-    if (response.status === 200) {
-      alert(`Added ${quantity} ${product.product_name} to cart`);
-    }
-  }
+  }, [user]);
 
   return (
     <div>
       <h1>Cart</h1>
       <ul>
-        {cart.products && cart.products.map((product) => (
-          <li key={product.product_id}>
-            {product.product_name} - {product.quantity}
+        {cart.map((item) => (
+          <li key={item.product_id}>
+            {item.product_name} - {item.quantity}
           </li>
         ))}
       </ul>
-      <form onSubmit={handleAddProduct}>
-        <select name='productId'>
-          {products.map((product) => (
-            <option key={product.product_id} value={product.product_id}>
-              {product.product_name}
-            </option>
-          ))}
-        </select>
-        <input
-          type='number'
-          value={quantity}
-          onChange={(event) => setQuantity(event.target.value)}
-        />
-        <button type='submit'>Add to Cart</button>
-      </form>
       <Link to='/products'>Back to Products</Link>
     </div>
   );
