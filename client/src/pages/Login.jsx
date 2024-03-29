@@ -1,27 +1,35 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import useAuth from './useAuth';
 
-export default function Login({ login }) {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+export default function Login() {
+    const [credentials, setCredentials] = useState({});
+    const { login } = useAuth();
 
-  const submit = async (ev) => {
-    ev.preventDefault();
-    await login({ username, password });
-  };
+    const handleChange = (e) => {
+        setCredentials({
+            ...credentials,
+            [e.target.name]: e.target.value
+        });
+    };
 
-  return (
-    <form onSubmit={submit}>
-      <input
-        value={username}
-        placeholder="username"
-        onChange={(ev) => setUsername(ev.target.value)}
-      />
-      <input
-        value={password}
-        placeholder="password"
-        onChange={(ev) => setPassword(ev.target.value)}
-      />
-      <button disabled={!username || !password}>Login</button>
-    </form>
-  );
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        login(credentials);
+    };
+
+    return (
+        <form onSubmit={handleSubmit}>
+            <label>
+                Username
+                <input type="text" name="username" onChange={handleChange} />
+            </label>
+            <label>
+                Password
+                <input type="password" name="password" onChange={handleChange} />
+            </label>
+            <button type="submit">Login</button>
+            <Link to="/register">Register</Link>
+        </form>
+    );
 }

@@ -11,6 +11,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "axios": "^1.6.8",
     "bcrypt": "^5.1.1",
     "dom": "^0.0.3",
     "faker": "^5.5.3",

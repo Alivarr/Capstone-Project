@@ -1,5 +1,8 @@
+/* eslint-disable no-unused-vars */
 import { useState, useEffect } from 'react'
 import { Link, Route, Routes } from 'react-router-dom';
+// eslint-disable-next-line no-unused-vars
+import axios from 'axios';
 import './index.css';
 import Login from './pages/Login';
 import useAuth from './pages/useAuth';

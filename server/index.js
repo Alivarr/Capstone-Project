@@ -31,7 +31,17 @@ const {
   getUserOrders,
   getCartProducts,
   addProductToCart,
-  deleteProductFromCart
+  deleteProductFromCart,
+  eraseTables,
+  createCategory,
+  updateCategory,
+  deleteCategory,
+  checkUserExists,
+  checkProductExists,
+  checkCategoryExists,
+  checkReviewExists,
+  checkCartExists,
+  checkOrderExists
 } = require('./db');
 const express = require('express');
 const app = express();
@@ -293,6 +303,37 @@ app.get('/api/categories/:id', async(req, res, next)=> {
   }
 });
 
+//this Route will create a new category, for admin use only
+app.post('/api/categories', async(req, res, next)=> {
+  try {
+    res.send(await createCategory(req.body));
+  }
+  catch(ex){
+    next(ex);
+  }
+});
+
+//this Route will update a category, for admin use only
+app.put('/api/categories/:id', async(req, res, next)=> {
+  try {
+    res.send(await updateCategory(req.params.id, req.body));
+  }
+  catch(ex){
+    next(ex);
+  }
+});
+
+//this Route will delete a category, for admin use only
+app.delete('/api/categories/:id', async(req, res, next)=> {
+  try {
+    res.send(await deleteCategory(req.params.id));
+  }
+  catch(ex){
+    next(ex);
+  }
+});
+
+
 
 /*Review Routes*/
 
@@ -397,53 +438,148 @@ app.use((err, req, res, next)=> {
   res.status(err.status || 500).send({ error: err.message ? err.message : err });
 });
 
+
+/*checker routes*/
+
+//this Route will check if a user exists
+app.get('/api/check/user/:userId', async(req, res, next)=> {
+  try {
+    res.send(await checkUserExists(req.params.userId));
+  }
+  catch(ex){
+    next(ex);
+  }
+});
+
+//this Route will check if a product exists
+app.get('/api/check/product/:productId', async(req, res, next)=> {
+  try {
+    res.send(await checkProductExists(req.params.productId));
+  }
+  catch(ex){
+    next(ex);
+  }
+});
+
+//this Route will check if a category exists
+app.get('/api/check/category/:categoryId', async(req, res, next)=> {
+  try {
+    res.send(await checkCategoryExists(req.params.categoryId));
+  }
+  catch(ex){
+    next(ex);
+  }
+});
+
+
 const init = async()=> {
   const port = process.env.PORT || 3000;
   await client.connect();
   console.log('connected to database');
 
+// Create tables
   await createTables();
-  console.log('tables created');
+    // Seed tables
 
-  const [moe, lucy, ethyl, curly] = await Promise.all([
-    createUser({ username: 'moe', password: 'm_pw', email: 'test1@test.com', isAdmin: true}),
-    createUser({ username: 'lucy', password: 'l_pw', email: 'test2@test.com', isAdmin: false}),
-    createUser({ username: 'ethyl', password: 'e_pw', email: 'test3@test.com', isAdmin: false}),
-    createUser({ username: 'curly', password: 'c_pw', email: 'test4@test.com', isAdmin: true})
-  ]);
 
-  const [product1, product2, product3, product4] = await Promise.all([
-    createProducts({ name: 'product1', price: 100, description: 'product1 description', inventory: 10, categoryId: 1}),
-    createProducts({ name: 'product2', price: 200, description: 'product2 description', inventory: 20, categoryId: 2}),
-    createProducts({ name: 'product3', price: 300, description: 'product3 description', inventory: 30, categoryId: 3}),
-    createProducts({ name: 'product4', price: 400, description: 'product4 description', inventory: 40, categoryId: 4})
-  ]);
+  // const [ category1, category2, category3, category4 ] = await Promise.all([
+  //   createCategory({
+  //     name: 'Category 1',
+  //     description: 'This is category 1'
+  //   }),
+  //   createCategory({
+  //     name: 'Category 2',
+  //     description: 'This is category 2'
+  //   }),
+  //   createCategory({
+  //     name: 'Category 3',
+  //     description: 'This is category 3'
+  //   }),
+  //   createCategory({
+  //     name: 'Category 4',
+  //     description: 'This is category 4'
+  //   })
+  // ]);
 
-  const [cart1, cart2, cart3, cart4] = await Promise.all([
-    createCart(moe.id),
-    createCart(lucy.id),
-    createCart(ethyl.id),
-    createCart(curly.id)
-  ]);
+  // const [ productA, productB, productC, productD ] = await Promise.all([
+  //   createProducts({
+  //     name: 'Product A',
+  //     description: 'This is product A',
+  //     price: 100,
+  //     rating: 4.5,
+  //     imageUrl: 'https://picsum.photos/200/300'
+  //   }),
+  //   createProducts({
+  //     name: 'Product B',
+  //     description: 'This is product B',
+  //     price: 200,
+  //     rating: 3.5,
+  //     imageUrl: 'https://picsum.photos/200/300'
+  //   }),
+  //   createProducts({
+  //     name: 'Product C',
+  //     description: 'This is product C',
+  //     price: 300,
+  //     rating: 5,
+  //     imageUrl: 'https://picsum.photos/200/300'
+  //   }),
+  //   createProducts({
+  //     name: 'Product D',
+  //     description: 'This is product D',
+  //     price: 400,
+  //     rating: 4,
+  //     imageUrl: 'https://picsum.photos/200/300'
+  //   })
+  // ]);
 
-  const [order1, order2, order3, order4] = await Promise.all([
-    createOrder(moe.id, { cartId: cart1.id, status: 'completed'}),
-    createOrder(lucy.id, { cartId: cart2.id, status: 'completed'}),
-    createOrder(ethyl.id, { cartId: cart3.id, status: 'completed'}),
-    createOrder(curly.id, { cartId: cart4.id, status: 'completed'})
-  ]);
+  //   const [ johndoe, janedoe, bobsmith, alicejohnson ] = await Promise.all([
+  //     createUser({
+  //       username: 'johndoe',
+  //       password: 'password123',
+  //       email: 'johndoe@example.com',
+  //       firstName: 'John',
+  //       lastName: 'Doe',
+  //       isAdmin: true,
+  //       favorite_number: 7
+  //     }),
+  //     createUser({
+  //       username: 'janedoe',
+  //       password: 'password456',
+  //       email: 'janedoe@example.com',
+  //       firstName: 'Jane',
+  //       lastName: 'Doe',
+  //       isAdmin: false,
+  //       favorite_number: 3
+  //     }),
+  //     createUser({
+  //       username: 'bobsmith',
+  //       password: 'password789',
+  //       email: 'bobsmith@example.com',
+  //       firstName: 'Bob',
+  //       lastName: 'Smith',
+  //       isAdmin: false,
+  //       favorite_number: 4
+  //     }),
+  //     createUser({
+  //       username: 'alicejohnson',
+  //       password: 'password1011',
+  //       email: 'alicejohnson@example.com',
+  //       firstName: 'Alice',
+  //       lastName: 'Johnson',
+  //       isAdmin: false,
+  //       favorite_number: 5
+  //     })
+  //   ]);
 
-  const [review1, review2, review3, review4] = await Promise.all([
-    createReview(product1.id, { userId: moe.id, content: 'product1 review'}),
-    createReview(product2.id, { userId: lucy.id, content: 'product2 review'}),
-    createReview(product3.id, { userId: ethyl.id, content: 'product3 review'}),
-    createReview(product4.id, { userId: curly.id, content: 'product4 review'})
-  ]);
 
-    console.log(await fetchUsers());
-    console.log(await getProducts());
-    console.log(await getLimitedProducts());
-    console.log(await getCategories());
+    //need to make a console log to validate each thing was created (only users and products for now)
+    // console.log('users:', johndoe, janedoe, bobsmith, alicejohnson);
+    // console.log('products:', productA, productB, productC, productD);
+    
+  // //Erase tables
+ // await eraseTables();
+
+
 
   app.listen(port, ()=> console.log(`listening on port ${port}`));
 };

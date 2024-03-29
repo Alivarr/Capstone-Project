@@ -24,7 +24,8 @@ const createTables = async()=> {
 
     CREATE TABLE IF NOT EXISTS categories(
       category_id UUID PRIMARY KEY,
-      name VARCHAR(20) UNIQUE NOT NULL
+      name VARCHAR(20) UNIQUE NOT NULL,
+      description TEXT
     );
 
     CREATE TABLE IF NOT EXISTS products(
@@ -58,15 +59,15 @@ const createTables = async()=> {
     );
   
     CREATE TABLE IF NOT EXISTS order_products(
-      orderId UUID REFERENCES orders(id),
-      productId UUID REFERENCES products(id),
+      orderId UUID REFERENCES orders(order_id),
+      productId UUID REFERENCES products(product_id),
       quantity INTEGER,
       PRIMARY KEY (orderId, productId)
     );
 
     CREATE TABLE IF NOT EXISTS reviews(
       review_id UUID PRIMARY KEY,
-      productId UUID REFERENCES products(id),
+      productId UUID REFERENCES products(product_id),
       userId UUID REFERENCES users(id),
       review TEXT
     );
@@ -75,32 +76,53 @@ const createTables = async()=> {
   await client.query(SQL);
 };
 
+const eraseTables = async()=> {
+  const SQL = `
+    DROP TABLE IF EXISTS users CASCADE;
+    DROP TABLE IF EXISTS categories CASCADE;
+    DROP TABLE IF EXISTS products CASCADE;
+    DROP TABLE IF EXISTS carts CASCADE;
+    DROP TABLE IF EXISTS cart_products CASCADE;
+    DROP TABLE IF EXISTS orders CASCADE;
+    DROP TABLE IF EXISTS order_products CASCADE;
+    DROP TABLE IF EXISTS reviews CASCADE;
+  `;
+  await client.query(SQL);
+};
+
 //Create user is going to take the inputed information from the user and add it to the database
-const createUser = async({ username, password, email, firstName, lastName, isAdmin, createdAt, favorite_number })=> {
+const createUser = async({ username, password, email, isAdmin, favorite_number })=> {
   const SALT_COUNT = 10;
   const hashedPassword = await bcrypt.hash(password, SALT_COUNT);
   const SQL = `
-    INSERT INTO users(id, username, password, email, firstName, lastName, isAdmin, createdAt, favorite_number) 
-    VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9) 
-    RETURNING *
-  `;
-  const response = await client.query(SQL, [uuid.v4(), username, hashedPassword, email, firstName, lastName, isAdmin, createdAt, favorite_number]);
+    INSERT INTO users(id, username, password, email, isAdmin, favorite_number)
+    VALUES($1, $2, $3, $4, $5, $6)
+    RETURNING *;
+  `
+  const response = await client.query(SQL, [uuid.v4(), username, hashedPassword, email, isAdmin, favorite_number]);
   return response.rows[0];
 }
 
 //Authenticate is going to take the inputed information from the user and check it against the database to see if it is correct
 const authenticate = async({ username, password })=> {
   const SQL = `
-    SELECT id, username, password FROM users WHERE username=$1;
+    SELECT * FROM users WHERE username=$1;
   `;
   const response = await client.query(SQL, [username]);
-  if(!response.rows.length || (await bcrypt.compare(password, response.rows[0].password)) === false){
-    const error = Error('not authorized');
+  const user = response.rows[0];
+  if(!user){
+    const error = Error('bad credentials');
     error.status = 401;
     throw error;
   }
-  const token = await jwt.sign({ id: response.rows[0].id}, JWT);
-  return { token };
+  const match = await bcrypt.compare(password, user.password);
+  if(!match){
+    const error = Error('bad credentials');
+    error.status = 401;
+    throw error;
+  }
+  const token = await jwt.sign({ id: user.id }, JWT);
+  return token;
 };
 
 
@@ -135,26 +157,28 @@ const fetchUsers = async()=> {
   `;
   const response = await client.query(SQL);
   return response.rows;
-};
+}
 
 //fetchSingleUser is going to return a single user from the database
 const fetchSingleUser = async(id)=> {
   const SQL = `
-    SELECT id, username FROM users WHERE id=$1;
+    SELECT * FROM users WHERE id=$1;
   `;
   const response = await client.query(SQL, [id]);
   return response.rows[0];
-};
+}
 
 //updateUser is going to update a user in the database
-updateUser = async({ username, password, email, isAdmin, favorite_number })=> {
+updateUser = async({ username, password, email, isAdmin, favorite_number, firstName, lastName })=> {
+  const SALT_COUNT = 10;
+  const hashedPassword = await bcrypt.hash(password, SALT_COUNT);
   const SQL = `
     UPDATE users
-    SET username=$1, password=$2, email=$3, isAdmin=$4, favorite_number=$5
-    WHERE id=$6
-    RETURNING *
+    SET username=$1, password=$2, email=$3, isAdmin=$4, favorite_number=$5, firstName=$6, lastName=$7
+    WHERE id=$8
+    RETURNING *;
   `;
-  const response = await client.query(SQL, [username, password, email, isAdmin, favorite_number]);
+  const response = await client.query(SQL, [username, hashedPassword, email, isAdmin, favorite_number, firstName, lastName]);
   return response.rows[0];
 };
 
@@ -236,6 +260,22 @@ getCategories = async()=> {
   return response.rows;
 };
 
+//make a createCategory function that creates a category for a product
+createCategory = async({ name, description })=> {
+  const existingCategory = await checkCategoryExists(name);
+  if (existingCategory) {
+    throw new Error('Category with this name already exists');
+  }
+
+  const SQL = `
+    INSERT INTO categories(category_id, name, description) 
+    VALUES($1, $2, $3) 
+    RETURNING *
+  `;
+  const response = await client.query(SQL, [uuid.v4(), name, description]);
+  return response.rows[0];
+};
+
 //Want to make a get single category function that returns all the products from a single category
 getSingleCategory = async(category_id)=> {
   const SQL = `
@@ -243,6 +283,26 @@ getSingleCategory = async(category_id)=> {
   `;
   const response = await client.query(SQL, [category_id]);
   return response.rows[0];
+};
+
+//want to make an updateCategory function that updates a category in the database incase
+updateCategory = async({ name, description })=> {
+  const SQL = `
+    UPDATE categories
+    SET name=$1, description=$2
+    WHERE category_id=$3
+    RETURNING *
+  `;
+  const response = await client.query(SQL, [name, description]);
+  return response.rows[0];
+}
+
+//want to make a deleteCategory function that deletes a category from the database incase
+deleteCategory = async(category_id)=> {
+  const SQL = `
+    DELETE FROM categories WHERE category_id=$1;
+  `;
+  await client.query(SQL, [category_id]);
 };
 
 //Want to make a funtion that returns all the carts from the database. only the admin should be able to see this
@@ -407,6 +467,65 @@ deleteProductFromCart = async({ cartId, productId })=> {
   await client.query(SQL, [cartId, productId]);
 };
 
+//check if exists
+
+//check if a user exists
+const checkUserExists = async(username)=> {
+  const SQL = `
+    SELECT * FROM users WHERE username=$1;
+  `;
+  const response = await client.query(SQL, [username]);
+  return response.rows[0];
+};
+
+//check if a product exists
+const checkProductExists = async(name)=> {
+  const SQL = `
+    SELECT * FROM products WHERE name=$1;
+  `;
+  const response = await client.query(SQL, [name]);
+  return response.rows[0];
+};
+
+//check if a category exists
+const checkCategoryExists = async(name)=> {
+  const SQL = `
+    SELECT * FROM categories WHERE name=$1;
+  `;
+  const response = await client.query(SQL, [name]);
+  return response.rows[0];
+};
+
+//check if a review exists
+const checkReviewExists = async(review)=> {
+  const SQL = `
+    SELECT * FROM reviews WHERE review=$1;
+  `;
+  const response = await client.query(SQL, [review]);
+  return response.rows[0];
+};
+
+//check if a cart exists
+const checkCartExists = async(userId)=> {
+  const SQL = `
+    SELECT * FROM carts WHERE userId=$1;
+  `;
+  const response = await client.query(SQL, [userId]);
+  return response.rows[0];
+};
+
+//check if an order exists
+const checkOrderExists = async(userId)=> {
+  const SQL = `
+    SELECT * FROM orders WHERE userId=$1;
+  `;
+  const response = await client.query(SQL, [userId]);
+  return response.rows[0];
+};
+
+
+
+
 
 module.exports = {
   client,
@@ -441,5 +560,15 @@ module.exports = {
   getUserOrders,
   getCartProducts,
   addProductToCart,
-  deleteProductFromCart
+  deleteProductFromCart,
+  eraseTables,
+  createCategory,
+  updateCategory,
+  deleteCategory,
+  checkUserExists,
+  checkProductExists,
+  checkCategoryExists,
+  checkReviewExists,
+  checkCartExists,
+  checkOrderExists
 };
