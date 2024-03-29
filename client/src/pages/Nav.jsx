@@ -13,11 +13,11 @@ export default function Nav() {
                 <li>
                     <Link to="/products">Products</Link>
                 </li>
+                <li>
+                    <Link to="/cart">Cart</Link>
+                </li>
                 {user ? (
                     <>
-                        <li>
-                            <Link to="/cart">Cart</Link>
-                        </li>
                         <li>
                             <Link to="/user">User</Link>
                         </li>

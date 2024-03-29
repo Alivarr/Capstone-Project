@@ -1,7 +1,6 @@
 /* eslint-disable no-unused-vars */
-import { useState, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import axios from 'axios';
+import useAuth from './pages/useAuth';
 
 import Login from './pages/Login';
 import Home from './pages/Home';
@@ -10,7 +9,6 @@ import Products from './pages/Products';
 import Register from './pages/Register';
 import User from './pages/User';
 import Logout from './pages/Logout';
-import useAuth from './pages/useAuth';
 import Nav from './pages/Nav';
 
 function App() {

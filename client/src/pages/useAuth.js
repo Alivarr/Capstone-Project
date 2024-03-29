@@ -49,7 +49,7 @@ export default function useAuth() {
     };
     const logout = ()=> {
         window.localStorage.removeItem('token');
-        setAuth({});
+        setAuth(null);
     };
 
     useEffect(()=> {
