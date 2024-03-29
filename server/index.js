@@ -67,15 +67,25 @@ const isLoggedIn = async(req, res, next)=> {
 
 /*User Routes*/
 
-//this Routse will sign up a new user
-app.post('/api/auth/signup', async(req, res, next)=> {
+//this Routse will register a new user
+app.post('/api/register', async(req, res, next)=> {
   try {
+    const existingUser = await checkUserExists(req.body.username);
+    if (existingUser) {
+      return res.status(400).json({ error: 'Username already exists' });
+    }
+
     const user = await createUser(req.body);
+
+    if (!user) {
+      return res.status(500).json({ error: 'Failed to create user' });
+    }
     const token = jwt.sign({ id: user.id }, JWT);
-    res.send({ token, user });
+    res.status(201).json({ token, user });
   }
   catch(ex){
-    next(ex);
+    console.error(ex);
+    res.status(500).json({ error: 'An error occurred while registering' });
   }
 });
 
@@ -99,10 +109,10 @@ app.post('/api/auth/login', async(req, res, next)=> {
   catch(ex){
     next(ex);
   }
-}); 
+});
 
 //this Route will get the user's information
-app.get('/api/auth/me', isLoggedIn, (req, res, next)=> {
+app.get('/api/auth/me', isLoggedIn, async(req, res, next)=> {
   try {
     res.send(req.user);
   }
@@ -470,6 +480,9 @@ app.get('/api/check/category/:categoryId', async(req, res, next)=> {
     next(ex);
   }
 });
+
+
+/*debug variables*/
 
 
 const init = async()=> {

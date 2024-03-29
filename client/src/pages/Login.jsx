@@ -1,35 +1,42 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import useAuth from './useAuth';
 
 export default function Login() {
-    const [credentials, setCredentials] = useState({});
-    const { login } = useAuth();
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const { login } = useAuth();
+  const navigate = useNavigate();
 
-    const handleChange = (e) => {
-        setCredentials({
-            ...credentials,
-            [e.target.name]: e.target.value
-        });
-    };
+  function handleSubmit(event) {
+    event.preventDefault();
+    login(username, password)
+      .then(() => {
+        navigate('/home'); 
+      });
+  }
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        login(credentials);
-    };
-
-    return (
-        <form onSubmit={handleSubmit}>
-            <label>
-                Username
-                <input type="text" name="username" onChange={handleChange} />
-            </label>
-            <label>
-                Password
-                <input type="password" name="password" onChange={handleChange} />
-            </label>
-            <button type="submit">Login</button>
-            <Link to="/register">Register</Link>
-        </form>
-    );
+  return (
+    <form onSubmit={handleSubmit}>
+      <h1>Login</h1>
+      <label>
+        Username
+        <input
+          type="text"
+          value={username}
+          onChange={(event) => setUsername(event.target.value)}
+        />
+      </label>
+      <label>
+        Password
+        <input
+          type="password"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+        />
+      </label>
+      <button type="submit">Login</button>
+      <Link to="/register">Register</Link>
+    </form>
+  );
 }

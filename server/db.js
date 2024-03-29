@@ -22,6 +22,7 @@ const createTables = async()=> {
       favorite_number INTEGER
     );
 
+  
     CREATE TABLE IF NOT EXISTS categories(
       category_id UUID PRIMARY KEY,
       name VARCHAR(20) UNIQUE NOT NULL,
