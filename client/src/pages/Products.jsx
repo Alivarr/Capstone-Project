@@ -1,47 +1,34 @@
-//products page
-import { useState, useEffect } from 'react';
+/* eslint-disable no-unused-vars */
+import  { useState, useEffect } from 'react';
+import axios from 'axios';
 
 const Products = () => {
-    const [products, setProducts] = useState([]);
-    
-    useEffect(() => {
-        async function getProducts() {
-            const response = await fetch('http://localhost:3000/api/products');
-            const data = await response.json();
-            setProducts(data);
-        }
-        getProducts();
-    }
-    , []);
+  const [products, setProducts] = useState([]);
 
-    async function addToCart(productId) {
-        const response = await fetch('http://localhost:3000/api/cart', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ productId }),
-        });
-        if (!response.ok) {
-            return alert('Failed to add to cart');
-        }
-        alert('Added to cart');
-    }
+  useEffect(() => {
+    const fetchProducts = async () => {
+      const response = await axios.get('http://localhost:3000/api/products');
+      setProducts(response.data);
+    };
 
+    fetchProducts();
+  }, []);
 
-    return (
-        <div>
-            <h2>Products</h2>
-            {products.map((product) => (
-                <div key={product.id} style={{border: '1px solid', margin: '10px', padding: '10px'}}>
-                    <h3>{product.name}</h3>
-                    <p>{product.price}</p>
-                    <p>{product.description}</p>
-                    <button onClick={() => addToCart(product.id)}>Add to Cart</button>
-                </div>
-            ))}
+  const handleAddToCart = async (productId) => {
+    // Add product to cart logic here
+  };
+
+  return (
+    <div>
+      {products.map((product) => (
+        <div key={product.product_id}>
+          <h2>{product.product_name}</h2>
+          <p>{product.description}</p>
+          <button onClick={() => handleAddToCart(product.product_id)}>Add to Cart</button>
         </div>
-    );
-}
+      ))}
+    </div>
+  );
+};
 
 export default Products;

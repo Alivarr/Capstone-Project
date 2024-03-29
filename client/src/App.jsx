@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-vars */
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate,  } from 'react-router-dom';
 import useAuth from './pages/useAuth';
 
 import Login from './pages/Login';
@@ -12,19 +12,19 @@ import Logout from './pages/Logout';
 import Nav from './pages/Nav';
 
 function App() {
-  const { auth } = useAuth();
-
+  const { user } = useAuth();
   return (
     <div>
       <Nav />
       <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/login" element={auth ? <Navigate to="/user" /> : <Login />} />
-        <Route path="/register" element={auth ? <Navigate to="/user" /> : <Register />} />
-        <Route path="/user" element={!auth ? <Navigate to="/login" /> : <User />} />
+        <Route path="/home" element={<Home />} />
         <Route path="/products" element={<Products />} />
-        <Route path="/cart" element={!auth ? <Navigate to="/login" /> : <Cart />} />
+        <Route path="/cart" element={<Cart />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/user" element={<User />} />
         <Route path="/logout" element={<Logout />} />
+        <Route path="/" element={<Navigate to="/Home" />} />
       </Routes>
     </div>
   );
