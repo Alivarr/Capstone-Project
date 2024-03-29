@@ -1,6 +1,6 @@
 /* eslint-disable no-unused-vars */
 import { useState, useEffect } from 'react';
-import { Routes, Route } from 'react-router-dom'; // Removed BrowserRouter
+import { Routes, Route, Navigate } from 'react-router-dom';
 import axios from 'axios';
 
 import Login from './pages/Login';
@@ -14,39 +14,18 @@ import useAuth from './pages/useAuth';
 import Nav from './pages/Nav';
 
 function App() {
-  const auth = useAuth();
-
-  useEffect(() => {
-    async function loadUser() {
-      try {
-        const response = await axios.get('http://localhost:3000/api/user', {
-          headers: {
-            Authorization: `Bearer ${auth.token}`,
-          },
-        });
-        auth.setUser(response.data);
-      } catch (error) {
-        console.error(error);
-      }
-    }
-
-    if (auth.token) {
-      loadUser();
-    }
-  }
-  , [auth.token]);
+  const { auth } = useAuth();
 
   return (
     <div>
       <Nav />
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/home" element={<Home />} />
+        <Route path="/login" element={auth ? <Navigate to="/user" /> : <Login />} />
+        <Route path="/register" element={auth ? <Navigate to="/user" /> : <Register />} />
+        <Route path="/user" element={!auth ? <Navigate to="/login" /> : <User />} />
         <Route path="/products" element={<Products />} />
-        <Route path="/cart" element={<Cart />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/user" element={<User />} />
+        <Route path="/cart" element={!auth ? <Navigate to="/login" /> : <Cart />} />
         <Route path="/logout" element={<Logout />} />
       </Routes>
     </div>
