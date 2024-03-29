@@ -116,7 +116,7 @@ app.post('/api/login', async(req, res, next)=> {
 app.post('/api/logout', async(req, res, next)=> {
   try {
     await logoutUser(req.body);
-    res.json({ message: 'Logged out' });
+    res.send('logged out');
   }
   catch(ex){
     next(ex);
