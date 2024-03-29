@@ -1,27 +1,63 @@
-import { useState } from 'react';
+/* eslint-disable no-unused-vars */
+import { useState, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import useAuth from './useAuth';
 
-export default function Login({ login }) {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+const Login = ({ token, setToken }) => {
+    const [username, setUsername] = useState('');
+    const [password, setPassword] = useState('');
+    const navigate = useNavigate();
+    const { user } = useAuth();
 
-  const submit = async (ev) => {
-    ev.preventDefault();
-    await login({ username, password });
-  };
+    async function handleSubmit(event) {
+        event.preventDefault();
+        const response = await fetch('http://localhost:3000/api/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ username, password }),
+        });
 
-  return (
-    <form onSubmit={submit}>
-      <input
-        value={username}
-        placeholder="username"
-        onChange={(ev) => setUsername(ev.target.value)}
-      />
-      <input
-        value={password}
-        placeholder="password"
-        onChange={(ev) => setPassword(ev.target.value)}
-      />
-      <button disabled={!username || !password}>Login</button>
-    </form>
-  );
-}
+        if (!response.ok) {
+            return alert('Invalid credentials');
+        }
+
+        const { token } = await response.json();
+        localStorage.setItem('token', token);
+        setToken(token);
+    }
+
+    useEffect(() => {
+        const token = localStorage.getItem('token');
+        if (token) {
+            navigate('/users');
+        }
+    }, [token, navigate]);
+
+    return (
+        <form onSubmit={handleSubmit}>
+            <h1>Login</h1>
+            <label>
+                Username
+                <input
+                    type='text'
+                    value={username}
+                    onChange={(event) => setUsername(event.target.value)}
+                />
+            </label>
+            <label>
+                Password
+                <input
+                    type='password'
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                />
+            </label>
+            <button type='submit'>Login</button>
+            <Link to='/register'>Register</Link>
+        </form>
+    );
+};
+
+export default Login;

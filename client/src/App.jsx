@@ -1,36 +1,55 @@
-import { useState, useEffect } from 'react'
-import { Link, Route, Routes } from 'react-router-dom';
-import './index.css';
+/* eslint-disable no-unused-vars */
+import { useState, useEffect } from 'react';
+import { Routes, Route } from 'react-router-dom'; // Removed BrowserRouter
+import axios from 'axios';
+
 import Login from './pages/Login';
+import Home from './pages/Home';
+import Cart from './pages/Cart';
+import Products from './pages/Products';
+import Register from './pages/Register';
+import User from './pages/User';
+import Logout from './pages/Logout';
 import useAuth from './pages/useAuth';
+import Nav from './pages/Nav';
 
 function App() {
-  const { auth, login, logout, attemptLoginWithToken } = useAuth();
+  const auth = useAuth();
 
   useEffect(() => {
-    attemptLoginWithToken();
-  }, [attemptLoginWithToken]);
+    async function loadUser() {
+      try {
+        const response = await axios.get('http://localhost:3000/api/user', {
+          headers: {
+            Authorization: `Bearer ${auth.token}`,
+          },
+        });
+        auth.setUser(response.data);
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    if (auth.token) {
+      loadUser();
+    }
+  }
+  , [auth.token]);
 
   return (
-    <>
-      {!auth.id ? (
-        <Login login={login} />
-      ) : (
-        <button onClick={logout}>Logout {auth.username}</button>
-      )}
-      {!!auth.id && (
-        <nav>
-          <Link to="/">Home</Link>
-          <Link to="/faq">FAQ</Link>
-        </nav>
-      )}
-      {!!auth.id && (
-        <Routes>
-          <Route path="/" element={<h1>Home</h1>} />
-          <Route path="/faq" element={<h1>FAQ</h1>} />
-        </Routes>
-      )}
-    </>
+    <div>
+      <Nav />
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/home" element={<Home />} />
+        <Route path="/products" element={<Products />} />
+        <Route path="/cart" element={<Cart />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/user" element={<User />} />
+        <Route path="/logout" element={<Logout />} />
+      </Routes>
+    </div>
   );
 }
 
