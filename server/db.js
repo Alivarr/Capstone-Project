@@ -35,6 +35,7 @@ const createTables = async()=> {
       description TEXT,
       price DECIMAL(10, 2),
       category UUID REFERENCES categories(category_id),
+      stock INTEGER,
       rating DECIMAL(2, 1),
       imageUrl VARCHAR(100)
     );
@@ -230,13 +231,13 @@ logoutUser = async()=> {
 /*MORE RELEVERANT TO TIER 1*/
 
 //need to make a createProducts function that takes in a product object and adds it to the database
-createProducts = async({ name, description, price, category, rating, imageUrl })=> {
+createProducts = async({ name, description, price, category, rating, imageUrl, stock })=> {
   const SQL = `
-    INSERT INTO products(product_id, name, description, price, category, rating, imageUrl) 
-    VALUES($1, $2, $3, $4, $5, $6, $7) 
+    INSERT INTO products(product_id, name, description, price, category, rating, imageUrl, stock) 
+    VALUES($1, $2, $3, $4, $5, $6, $7, $8) 
     RETURNING *
   `;
-  const response = await client.query(SQL, [uuid.v4(), name, description, price, category, rating, imageUrl]);
+  const response = await client.query(SQL, [uuid.v4(), name, description, price, category, rating, imageUrl, stock]);
   return response.rows[0];
 };
 
@@ -271,7 +272,7 @@ getSingleProduct = async(product_id)=> {
 updateProduct = async({ name, description, price, category, rating, imageUrl })=> {
   const SQL = `
     UPDATE products
-    SET name=$1, description=$2, price=$3, category=$4, rating=$5, imageUrl=$6
+    SET name=$1, description=$2, price=$3, category=$4, rating=$5, imageUrl=$6, stock=$8
     WHERE product_id=$7
     RETURNING *
   `;
