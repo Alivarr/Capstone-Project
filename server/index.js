@@ -41,14 +41,18 @@ const {
   checkCategoryExists,
   checkReviewExists,
   checkCartExists,
-  checkOrderExists
+  checkOrderExists,
+  loginUser,
+  logoutUser
 } = require('./db');
 const express = require('express');
 const app = express();
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { JWT } = process.env;
+const cors = require('cors');
 app.use(express.json());
+app.use(cors());
 
 //for deployment only
 const path = require('path');
@@ -99,12 +103,27 @@ app.get('/api/users/:id', async(req, res, next)=> {
   }
 });
 
-//this Route will log in a user
-app.post('/api/auth/login', async(req, res, next)=> {
+//this Route will login a user
+app.post('/api/login', async(req, res, next)=> {
   try {
-    const user = await authenticate(req.body);
+    const user = await loginUser(req.body);
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid username or password' });
+    }
+
     const token = jwt.sign({ id: user.id }, JWT);
-    res.send({ token, user });
+    res.json({ token, user });
+  }
+  catch(ex){
+    next(ex);
+  }
+});
+
+//this Route will logout a user
+app.post('/api/logout', async(req, res, next)=> {
+  try {
+    await logoutUser(req.body);
+    res.json({ message: 'Logged out' });
   }
   catch(ex){
     next(ex);

@@ -8,7 +8,7 @@ export default function Home() {
   return (
     <div>
       <h1>Welcome to our store!</h1>
-      <img src="path_to_your_image.jpg" alt="Welcome image" />
+      <img src="https://picsum.photos/500/500" alt="Welcome image" />
     </div>
   );
 }

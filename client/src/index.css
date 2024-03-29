@@ -42,6 +42,15 @@ header nav {
   gap: 10px; 
 }
 
+header nav li {
+  padding: 0 20px 0 20px;
+  border-right: 1px solid #ffffff;
+}
+
+header nav li:last-child {
+  border-right: none;
+}
+
 header li {
   padding: 0 20px 0 20px; 
 }
@@ -52,11 +61,6 @@ header #branding {
 
 header #branding h1 {
   margin: 0;
-}
-
-header nav {
-  float: right;
-  margin-top: 10px;
 }
 
 header .highlight, header .current a {

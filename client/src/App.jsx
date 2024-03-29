@@ -16,12 +16,32 @@ import Nav from './pages/Nav';
 function App() {
   const auth = useAuth();
 
+  useEffect(() => {
+    async function loadUser() {
+      try {
+        const response = await axios.get('http://localhost:3000/api/user', {
+          headers: {
+            Authorization: `Bearer ${auth.token}`,
+          },
+        });
+        auth.setUser(response.data);
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    if (auth.token) {
+      loadUser();
+    }
+  }
+  , [auth.token]);
+
   return (
     <div>
       <Nav />
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/Home" element={<Home />} />
+        <Route path="/home" element={<Home />} />
         <Route path="/products" element={<Products />} />
         <Route path="/cart" element={<Cart />} />
         <Route path="/login" element={<Login />} />
@@ -29,7 +49,7 @@ function App() {
         <Route path="/user" element={<User />} />
         <Route path="/logout" element={<Logout />} />
       </Routes>
-      </div>
+    </div>
   );
 }
 

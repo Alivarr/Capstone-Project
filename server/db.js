@@ -191,6 +191,41 @@ deleteUser = async(id)=> {
   await client.query(SQL, [id]);
 };
 
+//loginUser is going to login a user to the database
+loginUser = async({ username, password })=> {
+  const SQL = `
+    SELECT * FROM users WHERE username=$1;
+  `;
+  const response = await client.query(SQL, [username]);
+  const user = response.rows[0];
+  if(!user){
+    const error = Error('bad credentials');
+    error.status = 401;
+    throw error;
+  }
+  const match = await bcrypt.compare(password, user.password);
+  if(!match){
+    const error = Error('bad credentials');
+    error.status = 401;
+    throw error;
+  }
+  return user;
+};
+
+//logoutUser is going to logout a user from the database
+logoutUser = async()=> {
+  const SQL = `
+    SELECT * FROM users WHERE username=$1;
+  `;
+  const response = await client.query(SQL, [username]);
+  const user = response.rows[0];
+  if(!user){
+    const error = Error('bad credentials');
+    error.status = 401;
+    throw error;
+  }
+  return user;
+};
 
 /*MORE RELEVERANT TO TIER 1*/
 
@@ -571,5 +606,7 @@ module.exports = {
   checkCategoryExists,
   checkReviewExists,
   checkCartExists,
-  checkOrderExists
+  checkOrderExists,
+  loginUser,
+  logoutUser
 };
