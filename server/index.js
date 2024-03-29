@@ -59,9 +59,10 @@ const path = require('path');
 app.get('/', (req, res)=> res.sendFile(path.join(__dirname, '../client/dist/index.html')));
 app.use('/assets', express.static(path.join(__dirname, '../client/dist/assets'))); 
 
+//this middleware will check if a user is logged in
 const isLoggedIn = async(req, res, next)=> {
   try{
-    req.user = await findUserWithToken(req.headers.authorization);
+    req.user = await authenticate(req.headers.authorization);
     next();
   }
   catch(ex){
@@ -72,24 +73,18 @@ const isLoggedIn = async(req, res, next)=> {
 /*User Routes*/
 
 //this Routse will register a new user
-app.post('/api/register', async(req, res, next)=> {
+app.post('/api/users', async(req, res, next)=> {
+  console.log('req.body:', req.body);
+  const { username, password, email } = req.body;
   try {
-    const existingUser = await checkUserExists(req.body.username);
-    if (existingUser) {
-      return res.status(400).json({ error: 'Username already exists' });
-    }
-
-    const user = await createUser(req.body);
-
-    if (!user) {
-      return res.status(500).json({ error: 'Failed to create user' });
-    }
+    const user = await createUser({ username, password: await bcrypt.hash(password, 10), email });
+    console.log('user:', user);
+    delete user.password;
     const token = jwt.sign({ id: user.id }, JWT);
-    res.status(201).json({ token, user });
+    res.json({ token, user });
   }
   catch(ex){
-    console.error(ex);
-    res.status(500).json({ error: 'An error occurred while registering' });
+    next(ex);
   }
 });
 
@@ -105,12 +100,10 @@ app.get('/api/users/:id', async(req, res, next)=> {
 
 //this Route will login a user
 app.post('/api/login', async(req, res, next)=> {
+ const { username, password } = req.body;
   try {
-    const user = await loginUser(req.body);
-    if (!user) {
-      return res.status(401).json({ error: 'Invalid username or password' });
-    }
-
+    const user = await loginUser(username, password);
+    delete user.password;
     const token = jwt.sign({ id: user.id }, JWT);
     res.json({ token, user });
   }
@@ -123,7 +116,7 @@ app.post('/api/login', async(req, res, next)=> {
 app.post('/api/logout', async(req, res, next)=> {
   try {
     await logoutUser(req.body);
-    res.json({ message: 'Logged out' });
+    res.send('logged out');
   }
   catch(ex){
     next(ex);

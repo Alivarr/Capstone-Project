@@ -1,55 +1,85 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import useAuth from './useAuth';
+import { Link } from 'react-router-dom';
 
-const Cart = ({ user }) => {
-    const [items, setItems] = useState([]);
+const Cart = () => {
+  const { user } = useAuth();
+  const [cart, setCart] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [quantity, setQuantity] = useState(1);
 
-    useEffect(() => {
-        async function fetchCartItems() {
-            if (user) {
-                try {
-                    const response = await axios.get(`/api/cart/${user.id}`);
-                    setItems(response.data);
-                } catch (error) {
-                    console.error('Failed to fetch cart items:', error);
-                }
-            } else {
-                const localItems = JSON.parse(localStorage.getItem('cart')) || [];
-                setItems(localItems);
-            }
-        }
+  useEffect(() => {
+    async function getCart() {
+      const response = await axios.get('http://localhost:3000/api/cart', {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+      setCart(response.data);
+    }
 
-        fetchCartItems();
-    }, [user]);
+    getCart();
+  }, []);
 
-    const handleRemove = (itemId) => {
-        setItems(items.filter(item => item.id !== itemId));
-    };
+  useEffect(() => {
+    async function getProducts() {
+      const response = await axios.get('http://localhost:3000/api/products');
+      setProducts(response.data);
+    }
 
-    const handleClear = () => {
-        // Clear the cart
-        setItems([]);
-    };
+    getProducts();
+  }, []);
 
-    const handleQuantityChange = (itemId, quantity) => {
-        setItems(items.map(item => item.id === itemId ? { ...item, quantity } : item));
-    };
+  async function handleAddProduct(event) {
+    event.preventDefault();
+    const productId = event.target.productId.value;
+    const product = products.find((product) => product.product_id === productId);
+    const cartId = cart.carts_id;
+    const response = await axios.post('http://localhost:3000/api/cart/products', {
+      cartId,
+      productId,
+      quantity,
+    }, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('token')}`,
+      },
+    });
 
-    return (
-        <div>
-            <h2>Cart</h2>
-            {items.map((item) => (
-                <div key={item.id}>
-                    <h3>{item.name}</h3>
-                    <p>{item.price}</p>
-                    <input type="number" value={item.quantity} onChange={(e) => handleQuantityChange(item.id, e.target.value)} />
-                    <button onClick={() => handleRemove(item.id)}>Remove</button>
-                </div>
-            ))}
-            <button onClick={handleClear}>Clear Cart</button>
-        </div>
-    );
+    if (response.status === 200) {
+      alert(`Added ${quantity} ${product.product_name} to cart`);
+    }
+  }
+
+  return (
+    <div>
+      <h1>Cart</h1>
+      <ul>
+        {cart.products && cart.products.map((product) => (
+          <li key={product.product_id}>
+            {product.product_name} - {product.quantity}
+          </li>
+        ))}
+      </ul>
+      <form onSubmit={handleAddProduct}>
+        <select name='productId'>
+          {products.map((product) => (
+            <option key={product.product_id} value={product.product_id}>
+              {product.product_name}
+            </option>
+          ))}
+        </select>
+        <input
+          type='number'
+          value={quantity}
+          onChange={(event) => setQuantity(event.target.value)}
+        />
+        <button type='submit'>Add to Cart</button>
+      </form>
+      <Link to='/products'>Back to Products</Link>
+    </div>
+  );
 };
 
 export default Cart;
