@@ -58,6 +58,7 @@ const stripe = require('stripe')(process.env.STRIPE_API_KEY);
 
 //for deployment only
 const path = require('path');
+const { en } = require('faker/lib/locales');
 app.get('/', (req, res)=> res.sendFile(path.join(__dirname, '../client/dist/index.html')));
 app.use('/assets', express.static(path.join(__dirname, '../client/dist/assets'))); 
 
@@ -71,6 +72,14 @@ const isLoggedIn = async(req, res, next)=> {
     next(ex);
   }
 };
+
+const calculateTotal = (cart)=> {
+  return cart.reduce((acc, product)=> {
+    return acc + product.price;
+  }, 0);
+};
+
+
 
 /*User Routes*/
 
@@ -99,12 +108,19 @@ app.get('/api/users/:id', async(req, res, next)=> {
 });
 
 //this Route will login a user
-app.post('/api/users/login', async(req, res, next)=> {
+app.post('/api/auth/login', async(req, res, next)=> {
   try {
-    const user = await authenticate(req.body);
-    delete user.password;
-    const token = jwt.sign({ id: user.id }, JWT);
-    res.json({ token, user });
+    res.send(await authenticate(req.body));
+  }
+  catch(ex){
+    next(ex);
+  }
+});
+
+//this Route will get the user's information
+app.get('/api/auth/me', isLoggedIn, (req, res, next)=> {
+  try {
+    res.send(req.user);
   }
   catch(ex){
     next(ex);
@@ -502,6 +518,40 @@ app.get('/api/check/category/:categoryId', async(req, res, next)=> {
     next(ex);
   }
 });
+
+/*Stripe Routes*/
+//create payment intent
+app.post('/api/payment-intent', async(req, res, next)=> {
+  const { items } = req.body;
+  const payIntent = await stripe.paymentIntents.create({
+    amount: calculateTotal(items),
+    currency: 'usd',
+  automatic_payment_method: {
+    enabled: true,
+  },
+});
+
+res.json({ clientSecret: payIntent.client_secret });
+});
+
+
+//this Route will create a new checkout session
+app.post('/api/checkout', async(req, res, next)=> {
+  try{
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: req.body,
+      mode: 'payment',
+      success_url: `${req.headers.origin}`,
+      cancel_url: `${req.headers.origin}`
+    });
+
+    res.json({ id: session.id });
+  } catch(ex){
+    next(ex);
+  }
+});
+
 
 
 /*debug variables*/

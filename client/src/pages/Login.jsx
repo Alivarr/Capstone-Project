@@ -1,38 +1,55 @@
+/* eslint-disable no-unused-vars */
 import { useState } from 'react';
+import axios from 'axios';
+import { Navigate } from 'react-router-dom';
 
-function Login() {
-  const [username, setUsername] = useState('');
+const Login = ({ login }) => {
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [redirect, setRedirect] = useState(false);
 
-  const handleSubmit = async (event) => {
+  const loginUser = async (email, password) => {
+    try {
+      const response = await axios.post('/api/auth', { email, password });
+      const { token, user } = response.data;
+      window.localStorage.setItem('token', token);
+      window.localStorage.setItem('user', JSON.stringify(user));
+      alert('Login successful! Now redirecting to the home page...');
+      setTimeout(() => setRedirect(true), 2000);
+    } catch (error) {
+      console.error('Failed to login:', error);
+    }
+  }
+
+  const handleSubmit = (event) => {
     event.preventDefault();
-    const response = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ username, password }),
-    });
+    loginUser(email, password);
+  }
 
-    const data = await response.json();
-    if (response.ok) {
-      window.localStorage.setItem('token', data.token);
-        window.location.assign('/'); 
-    } else {
-      console.error(data);}
-  };
+  if (redirect) {
+    return <Navigate to='/' />;
+  }
 
   return (
     <form onSubmit={handleSubmit}>
+      <h1>Login</h1>
       <label>
-        Username:
-        <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} />
+        Email
+        <input
+          type='email'
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+        />
       </label>
       <label>
-        Password:
-        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+        Password
+        <input
+          type='password'
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+        />
       </label>
-      <button type="submit">Login</button>
+      <button type='submit'>Login</button>
     </form>
   );
 }
