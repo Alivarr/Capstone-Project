@@ -1,63 +1,57 @@
 /* eslint-disable no-unused-vars */
-import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import useAuth from './useAuth';
+import { useState } from 'react';
+import axios from 'axios';
+import { Navigate } from 'react-router-dom';
 
-const Login = ({ token, setToken }) => {
-    const [username, setUsername] = useState('');
-    const [password, setPassword] = useState('');
-    const navigate = useNavigate();
-    const { user } = useAuth();
+const Login = ({ login }) => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [redirect, setRedirect] = useState(false);
 
-    async function handleSubmit(event) {
-        event.preventDefault();
-        const response = await fetch('http://localhost:3000/api/login', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ username, password }),
-        });
-
-        if (!response.ok) {
-            return alert('Invalid credentials');
-        }
-
-        const { token } = await response.json();
-        localStorage.setItem('token', token);
-        setToken(token);
+  const loginUser = async (email, password) => {
+    try {
+      const response = await axios.post('/api/auth', { email, password });
+      const { token, user } = response.data;
+      window.localStorage.setItem('token', token);
+      window.localStorage.setItem('user', JSON.stringify(user));
+      alert('Login successful! Now redirecting to the home page...');
+      setTimeout(() => setRedirect(true), 2000);
+    } catch (error) {
+      console.error('Failed to login:', error);
     }
+  }
 
-    useEffect(() => {
-        const token = localStorage.getItem('token');
-        if (token) {
-            navigate('/users');
-        }
-    }, [token, navigate]);
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    loginUser(email, password);
+  }
 
-    return (
-        <form onSubmit={handleSubmit}>
-            <h1>Login</h1>
-            <label>
-                Username
-                <input
-                    type='text'
-                    value={username}
-                    onChange={(event) => setUsername(event.target.value)}
-                />
-            </label>
-            <label>
-                Password
-                <input
-                    type='password'
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                />
-            </label>
-            <button type='submit'>Login</button>
-            <Link to='/register'>Register</Link>
-        </form>
-    );
-};
+  if (redirect) {
+    return <Navigate to='/' />;
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <h1>Login</h1>
+      <label>
+        Email
+        <input
+          type='email'
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+        />
+      </label>
+      <label>
+        Password
+        <input
+          type='password'
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+        />
+      </label>
+      <button type='submit'>Login</button>
+    </form>
+  );
+}
 
 export default Login;

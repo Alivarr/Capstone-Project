@@ -1,9 +1,11 @@
 const pg = require('pg');
+require('dotenv').config();
 const client = new pg.Client(process.env.DATABASE_URL || 'postgres://localhost/fsa_app_db');
 const uuid = require('uuid');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const JWT = process.env.JWT || 'shhh';
+const stripe = require('stripe')(process.env.STRIPE_API_KEY);
 if(JWT === 'shhh'){
   console.log('If deployed, set process.env.JWT to something other than shhh');
 }
@@ -19,14 +21,15 @@ const createTables = async()=> {
       lastName VARCHAR(100),
       isAdmin BOOLEAN,
       createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      favorite_number INTEGER
-    );
-
-  
-    CREATE TABLE IF NOT EXISTS categories(
-      category_id UUID PRIMARY KEY,
-      name VARCHAR(20) UNIQUE NOT NULL,
-      description TEXT
+      stripeCustomerId VARCHAR(100),
+      balance INTEGER,
+      currency VARCHAR(10),
+      default_source VARCHAR(100),
+      delinquent BOOLEAN,
+      invoice_prefix VARCHAR(10),
+      livemode BOOLEAN,
+      phone VARCHAR(20),
+      tax_exempt VARCHAR(20)
     );
 
     CREATE TABLE IF NOT EXISTS products(
@@ -37,13 +40,30 @@ const createTables = async()=> {
       category UUID REFERENCES categories(category_id),
       stock INTEGER,
       rating DECIMAL(2, 1),
-      imageUrl VARCHAR(100)
+      imageUrl VARCHAR(100),
+      stripeProductId VARCHAR(100),
+      active BOOLEAN,
+      created TIMESTAMP,
+      default_price DECIMAL(10, 2),
+      features TEXT,
+      package_dimensions VARCHAR(100),
+      shippable BOOLEAN,
+      statement_descriptor VARCHAR(100),
+      tax_code VARCHAR(100),
+      unit_label VARCHAR(100),
+      url VARCHAR(100)
     );
 
     CREATE TABLE IF NOT EXISTS carts(
       carts_id UUID PRIMARY KEY,
       userId UUID REFERENCES users(id) ON DELETE CASCADE,
-      date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      stripeSessionId VARCHAR(100),
+      amount_subtotal INTEGER,
+      amount_total INTEGER,
+      currency VARCHAR(10),
+      payment_status VARCHAR(20),
+      status VARCHAR(20)
     );
   
     CREATE TABLE IF NOT EXISTS cart_products(
@@ -93,42 +113,33 @@ const eraseTables = async()=> {
 };
 
 //Create user is going to take the inputed information from the user and add it to the database
-const createUser = async({ username, password, email, isAdmin, favorite_number })=> {
+const createUser = async({ username, password, email, isAdmin, firstName, lastName })=> {
   const SALT_COUNT = 10;
   const hashedPassword = await bcrypt.hash(password, SALT_COUNT);
   const SQL = `
-    INSERT INTO users(id, username, password, email, isAdmin, favorite_number)
-    VALUES($1, $2, $3, $4, $5, $6)
-    RETURNING *;
-  `
-  const response = await client.query(SQL, [uuid.v4(), username, hashedPassword, email, isAdmin, favorite_number]);
+    INSERT INTO users(id, username, password, email, isAdmin, firstName, lastName) 
+    VALUES($1, $2, $3, $4, $5, $6, $7) 
+    RETURNING *
+  `;
+  const response = await client.query(SQL, [uuid.v4(), username, hashedPassword, email, isAdmin, firstName, lastName]);
   return response.rows[0];
-}
+};
 
 //Authenticate is going to take the inputed information from the user and check it against the database to see if it is correct
 const authenticate = async({ username, password })=> {
   const SQL = `
-    SELECT * FROM users WHERE username=$1;
+    SELECT id, username, password FROM users WHERE username=$1;
   `;
   const response = await client.query(SQL, [username]);
-  const user = response.rows[0];
-  if(!user){
-    const error = Error('bad credentials');
+  if(!response.rows.length || (await bcrypt.compare(password, response.rows[0].password)) === false){
+    const error = Error('not authorized');
     error.status = 401;
     throw error;
   }
-  const match = await bcrypt.compare(password, user.password);
-  if(!match){
-    const error = Error('bad credentials');
-    error.status = 401;
-    throw error;
-  }
-  const token = await jwt.sign({ id: user.id }, JWT);
-  return token;
+  const token = await jwt.sign({ id: response.rows[0].id}, JWT);
+  return { token };
 };
 
-
-//Litterally going to find the user with the token,
 const findUserWithToken = async(token)=> {
   let id;
   try{
@@ -151,7 +162,6 @@ const findUserWithToken = async(token)=> {
   }
   return response.rows[0];
 };
-
 //Fetch users is going to return all the users from the database
 const fetchUsers = async()=> {
   const SQL = `
@@ -159,28 +169,29 @@ const fetchUsers = async()=> {
   `;
   const response = await client.query(SQL);
   return response.rows;
-}
+};
 
 //fetchSingleUser is going to return a single user from the database
-const fetchSingleUser = async(id)=> {
+fetchSingleUser = async(id)=> {
   const SQL = `
     SELECT * FROM users WHERE id=$1;
   `;
   const response = await client.query(SQL, [id]);
   return response.rows[0];
-}
+};
 
 //updateUser is going to update a user in the database
-updateUser = async({ username, password, email, isAdmin, favorite_number, firstName, lastName })=> {
+//need to add the ability to update any of the user information from the createtabe:Users
+updateUser = async({ username, password, email, isAdmin, firstName, lastName })=> {
   const SALT_COUNT = 10;
   const hashedPassword = await bcrypt.hash(password, SALT_COUNT);
   const SQL = `
     UPDATE users
-    SET username=$1, password=$2, email=$3, isAdmin=$4, favorite_number=$5, firstName=$6, lastName=$7
-    WHERE id=$8
-    RETURNING *;
+    SET username=$1, password=$2, email=$3, isAdmin=$4, firstName=$5, lastName=$6
+    WHERE id=$7
+    RETURNING *
   `;
-  const response = await client.query(SQL, [username, hashedPassword, email, isAdmin, favorite_number, firstName, lastName]);
+  const response = await client.query(SQL, [username, hashedPassword, email, isAdmin, firstName, lastName]);
   return response.rows[0];
 };
 
@@ -192,41 +203,6 @@ deleteUser = async(id)=> {
   await client.query(SQL, [id]);
 };
 
-//loginUser is going to login a user to the database
-loginUser = async({ username, password })=> {
-  const SQL = `
-    SELECT * FROM users WHERE username=$1;
-  `;
-  const response = await client.query(SQL, [username]);
-  const user = response.rows[0];
-  if(!user){
-    const error = Error('bad credentials');
-    error.status = 401;
-    throw error;
-  }
-  const match = await bcrypt.compare(password, user.password);
-  if(!match){
-    const error = Error('bad credentials');
-    error.status = 401;
-    throw error;
-  }
-  return user;
-};
-
-//logoutUser is going to logout a user from the database
-logoutUser = async()=> {
-  const SQL = `
-    SELECT * FROM users WHERE username=$1;
-  `;
-  const response = await client.query(SQL, [username]);
-  const user = response.rows[0];
-  if(!user){
-    const error = Error('bad credentials');
-    error.status = 401;
-    throw error;
-  }
-  return user;
-};
 
 /*MORE RELEVERANT TO TIER 1*/
 
@@ -278,7 +254,7 @@ updateProduct = async({ name, description, price, category, rating, imageUrl })=
   `;
   const response = await client.query(SQL, [name, description, price, category, rating, imageUrl]);
   return response.rows[0];
-}
+};
 
 //want to make a deleteProduct function that deletes a product from the database incase
 deleteProduct = async(product_id)=> {
@@ -332,7 +308,7 @@ updateCategory = async({ name, description })=> {
   `;
   const response = await client.query(SQL, [name, description]);
   return response.rows[0];
-}
+};
 
 //want to make a deleteCategory function that deletes a category from the database incase
 deleteCategory = async(category_id)=> {
@@ -370,7 +346,7 @@ getCart = async(userId)=> {
   `;
   const response = await client.query(SQL, [userId]);
   return response.rows;
-}
+};
 
 //need to make a updateCart function that would update a users cart on the cart table
 updateCart = async({ cartId, productId, quantity })=> {
@@ -607,7 +583,5 @@ module.exports = {
   checkCategoryExists,
   checkReviewExists,
   checkCartExists,
-  checkOrderExists,
-  loginUser,
-  logoutUser
+  checkOrderExists
 };

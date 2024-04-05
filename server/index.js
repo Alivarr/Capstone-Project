@@ -41,10 +41,9 @@ const {
   checkCategoryExists,
   checkReviewExists,
   checkCartExists,
-  checkOrderExists,
-  loginUser,
-  logoutUser
+  checkOrderExists
 } = require('./db');
+require('dotenv').config();
 const express = require('express');
 const app = express();
 const bcrypt = require('bcrypt');
@@ -54,15 +53,19 @@ const cors = require('cors');
 app.use(express.json());
 app.use(cors());
 
+const stripe = require('stripe')(process.env.STRIPE_API_KEY);
+
+
 //for deployment only
 const path = require('path');
+const { en } = require('faker/lib/locales');
 app.get('/', (req, res)=> res.sendFile(path.join(__dirname, '../client/dist/index.html')));
 app.use('/assets', express.static(path.join(__dirname, '../client/dist/assets'))); 
 
-//this middleware will check if a user is logged in
+//this middleware will check if a user is logged dont
 const isLoggedIn = async(req, res, next)=> {
   try{
-    req.user = await authenticate(req.headers.authorization);
+    req.user = await findUserWithToken(req.headers.authorization);
     next();
   }
   catch(ex){
@@ -70,15 +73,20 @@ const isLoggedIn = async(req, res, next)=> {
   }
 };
 
+const calculateTotal = (cart)=> {
+  return cart.reduce((acc, product)=> {
+    return acc + product.price;
+  }, 0);
+};
+
+
+
 /*User Routes*/
 
-//this Routse will register a new user
+//this Route will create a new user
 app.post('/api/users', async(req, res, next)=> {
-  console.log('req.body:', req.body);
-  const { username, password, email } = req.body;
   try {
-    const user = await createUser({ username, password: await bcrypt.hash(password, 10), email });
-    console.log('user:', user);
+    const user = await createUser(req.body);
     delete user.password;
     const token = jwt.sign({ id: user.id }, JWT);
     res.json({ token, user });
@@ -87,6 +95,7 @@ app.post('/api/users', async(req, res, next)=> {
     next(ex);
   }
 });
+
 
 //this Route will get a single user
 app.get('/api/users/:id', async(req, res, next)=> {
@@ -99,13 +108,19 @@ app.get('/api/users/:id', async(req, res, next)=> {
 });
 
 //this Route will login a user
-app.post('/api/login', async(req, res, next)=> {
- const { username, password } = req.body;
+app.post('/api/auth/login', async(req, res, next)=> {
   try {
-    const user = await loginUser(username, password);
-    delete user.password;
-    const token = jwt.sign({ id: user.id }, JWT);
-    res.json({ token, user });
+    res.send(await authenticate(req.body));
+  }
+  catch(ex){
+    next(ex);
+  }
+});
+
+//this Route will get the user's information
+app.get('/api/auth/me', isLoggedIn, (req, res, next)=> {
+  try {
+    res.send(req.user);
   }
   catch(ex){
     next(ex);
@@ -113,7 +128,7 @@ app.post('/api/login', async(req, res, next)=> {
 });
 
 //this Route will logout a user
-app.post('/api/logout', async(req, res, next)=> {
+app.post('/api/users/logout', async(req, res, next)=> {
   try {
     await logoutUser(req.body);
     res.send('logged out');
@@ -124,7 +139,7 @@ app.post('/api/logout', async(req, res, next)=> {
 });
 
 //this Route will get the user's information
-app.get('/api/auth/me', isLoggedIn, async(req, res, next)=> {
+app.get('/api/users/me', isLoggedIn, async(req, res, next)=> {
   try {
     res.send(req.user);
   }
@@ -162,6 +177,17 @@ app.put('/api/users/:id', async(req, res, next)=> {
     next(ex);
   }
 });
+
+//this Route will update a user's password
+app.put('/api/users/password/:id', async(req, res, next)=> {
+  try {
+    res.send(await updatePassword(req.params.id, req.body));
+  }
+  catch(ex){
+    next(ex);
+  }
+});
+
 
 
 /*Product Routes*/
@@ -492,6 +518,40 @@ app.get('/api/check/category/:categoryId', async(req, res, next)=> {
     next(ex);
   }
 });
+
+/*Stripe Routes*/
+//create payment intent
+app.post('/api/payment-intent', async(req, res, next)=> {
+  const { items } = req.body;
+  const payIntent = await stripe.paymentIntents.create({
+    amount: calculateTotal(items),
+    currency: 'usd',
+  automatic_payment_method: {
+    enabled: true,
+  },
+});
+
+res.json({ clientSecret: payIntent.client_secret });
+});
+
+
+//this Route will create a new checkout session
+app.post('/api/checkout', async(req, res, next)=> {
+  try{
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: req.body,
+      mode: 'payment',
+      success_url: `${req.headers.origin}`,
+      cancel_url: `${req.headers.origin}`
+    });
+
+    res.json({ id: session.id });
+  } catch(ex){
+    next(ex);
+  }
+});
+
 
 
 /*debug variables*/
