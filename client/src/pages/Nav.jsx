@@ -1,41 +1,22 @@
-import { Link } from "react-router-dom";
-import useAuth from "./useAuth";
+import { Link } from 'react-router-dom';
 
-export default function Nav() {
-    const { user } = useAuth();
+const Nav = ({ auth, logout }) => {
+  return (
+    <nav>
+      <Link to="/home">Home</Link>
+      <Link to="/products">Products</Link>
+      <Link to="/register">Register</Link>
+      {auth.id && <Link to="/cart">Cart</Link>}
+      {auth.id ? (
+        <>
+          <Link to="/user">User</Link>
+          <button onClick={logout}>Logout {auth.username}</button>
+        </>
+      ) : (
+        <Link to="/login">Login</Link>
+      )}
+    </nav>
+  );
+};
 
-    return (
-        <nav>
-            <ul>
-                <li>
-                    <Link to="/Home">Home</Link>
-                </li>
-                <li>
-                    <Link to="/products">Products</Link>
-                </li>
-                <li>
-                    <Link to="/cart">Cart</Link>
-                </li>
-                {user ? (
-                    <>
-                        <li>
-                            <Link to="/user">User</Link>
-                        </li>
-                        <li>
-                            <Link to="/logout">Logout</Link>
-                        </li>
-                    </>
-                ) : (
-                    <>
-                        <li>
-                            <Link to="/login">Login</Link>
-                        </li>
-                        <li>
-                            <Link to="/register">Register</Link>
-                        </li>
-                    </>
-                )}
-            </ul>
-        </nav>
-    );
-}
+export default Nav;

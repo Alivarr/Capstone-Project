@@ -1,43 +1,32 @@
 /* eslint-disable no-unused-vars */
-import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import axios from "axios";
-import useAuth from "./useAuth";
-import { tr } from "faker/lib/locales";
+import { useState } from 'react';
+import axios from 'axios';
+import { Navigate } from 'react-router-dom';
 
-const Register = ({ token, setToken }) => {
-    const [username, setUsername] = useState("");
-    const [password, setPassword] = useState("");
-    const [email, setEmail] = useState("");
-    const navigate = useNavigate();
-    const { user } = useAuth();
+const Register = () => {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('');
+  const [redirect, setRedirect] = useState(false);
 
-
-    async function handleSubmit(event) {
-        event.preventDefault();
-        const response = await fetch("http://localhost:3000/api/users", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ username, password, email }),
-        });
-
-        if (!response.ok) {
-            return alert("Invalid credentials");
-        }
-
-        const { token } = await response.json();
-        localStorage.setItem("token", token);
-        setToken(token);
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    try {
+      const response = await axios.post('/api/users', { username, password, email });
+      const { token, user } = response.data;
+        window.localStorage.setItem('token', token);
+        window.localStorage.setItem('user', JSON.stringify(user));
+        alert('Registration successful! Now redirecting to the home page...');
+        setTimeout(() => setRedirect(true), 2000);
+    }
+    catch (error) {
+      console.error('Failed to register:', error);
+    }
     }
 
-    useEffect(() => {
-        const token = localStorage.getItem("token");
-        if (token) {
-            navigate("/users");
-        }
-    }, [token, navigate]);
+    if (redirect) {
+        return <Navigate to='/' />;
+    }
 
     return (
         <form onSubmit={handleSubmit}>
@@ -45,32 +34,30 @@ const Register = ({ token, setToken }) => {
             <label>
                 Username
                 <input
-                    type="text"
+                    type='text'
                     value={username}
                     onChange={(event) => setUsername(event.target.value)}
                 />
             </label>
             <label>
-                Email
-                <input
-                    type="email"
-                    value={email}
-                    onChange={(event) => setEmail(event.target.value)}
-                />
-            </label>
-            <label>
                 Password
                 <input
-                    type="password"
+                    type='password'
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
                 />
             </label>
-            <button type="submit">Register</button>
-            <Link to="/login">Login</Link>
+            <label>
+                Email
+                <input
+                    type='email'
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                />
+            </label>
+            <button type='submit'>Register</button>
         </form>
     );
 }
 
 export default Register;
-

@@ -1,39 +1,63 @@
-/* eslint-disable no-unused-vars */
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
-import useAuth from './useAuth';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
-const Cart = () => {
-  const { user } = useAuth();
+const Cart = ({ auth }) => {
   const [cart, setCart] = useState([]);
+  const [total, setTotal] = useState(0);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchCart = async () => {
-      const response = await axios.get(`http://localhost:3000/api/cart/${user.id}`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
+      const response = await axios.get('http://localhost:3000/api/cart');
       setCart(response.data);
+      setTotal(response.data.reduce((acc, product) => acc + product.price, 0));
     };
 
-    if (user) {
-      fetchCart();
+    fetchCart();
+  }, []);
+
+  const handleRemoveFromCart = async (productId) => {
+    const response = await axios.delete(`http://localhost:3000/api/cart/${productId}`);
+    if (response.status === 200) {
+      setCart(cart.filter((product) => product.product_id !== productId));
+      setTotal(cart.reduce((acc, product) => acc + product.price, 0));
     }
-  }, [user]);
+  };
+
+  const handleCheckout = async () => {
+    // Checkout logic here
+  };
+
+  const handleClearCart = async () => {
+    // Clear cart logic here
+
+    const response = await axios.delete('http://localhost:3000/api/cart');
+    if (response.status === 200) {
+      setCart([]);
+      setTotal(0);
+    }
+
+    navigate('/products');
+  };
 
   return (
     <div>
       <h1>Cart</h1>
       <ul>
-        {cart.map((item) => (
-          <li key={item.product_id}>
-            {item.product_name} - {item.quantity}
+        {cart.map((product) => (
+          <li key={product.product_id}>
+            <h2>{product.product_name}</h2>
+            <p>{product.description}</p>
+            <p>{product.price}</p>
+            <img src={product.imageUrl} alt={product.product_name} />
+            <button onClick={() => handleRemoveFromCart(product.product_id)}>Remove</button>
           </li>
         ))}
       </ul>
-      <Link to='/products'>Back to Products</Link>
+      <p>Total: {total}</p>
+      <button onClick={handleCheckout}>Checkout</button>
+      <button onClick={handleClearCart}>Clear Cart</button>
     </div>
   );
 };

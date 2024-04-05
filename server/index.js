@@ -41,10 +41,9 @@ const {
   checkCategoryExists,
   checkReviewExists,
   checkCartExists,
-  checkOrderExists,
-  loginUser,
-  logoutUser
+  checkOrderExists
 } = require('./db');
+require('dotenv').config();
 const express = require('express');
 const app = express();
 const bcrypt = require('bcrypt');
@@ -54,15 +53,18 @@ const cors = require('cors');
 app.use(express.json());
 app.use(cors());
 
+const stripe = require('stripe')(process.env.STRIPE_API_KEY);
+
+
 //for deployment only
 const path = require('path');
 app.get('/', (req, res)=> res.sendFile(path.join(__dirname, '../client/dist/index.html')));
 app.use('/assets', express.static(path.join(__dirname, '../client/dist/assets'))); 
 
-//this middleware will check if a user is logged in
+//this middleware will check if a user is logged dont
 const isLoggedIn = async(req, res, next)=> {
   try{
-    req.user = await authenticate(req.headers.authorization);
+    req.user = await findUserWithToken(req.headers.authorization);
     next();
   }
   catch(ex){
@@ -72,13 +74,10 @@ const isLoggedIn = async(req, res, next)=> {
 
 /*User Routes*/
 
-//this Routse will register a new user
+//this Route will create a new user
 app.post('/api/users', async(req, res, next)=> {
-  console.log('req.body:', req.body);
-  const { username, password, email } = req.body;
   try {
-    const user = await createUser({ username, password: await bcrypt.hash(password, 10), email });
-    console.log('user:', user);
+    const user = await createUser(req.body);
     delete user.password;
     const token = jwt.sign({ id: user.id }, JWT);
     res.json({ token, user });
@@ -87,6 +86,7 @@ app.post('/api/users', async(req, res, next)=> {
     next(ex);
   }
 });
+
 
 //this Route will get a single user
 app.get('/api/users/:id', async(req, res, next)=> {
@@ -99,10 +99,9 @@ app.get('/api/users/:id', async(req, res, next)=> {
 });
 
 //this Route will login a user
-app.post('/api/login', async(req, res, next)=> {
- const { username, password } = req.body;
+app.post('/api/users/login', async(req, res, next)=> {
   try {
-    const user = await loginUser(username, password);
+    const user = await authenticate(req.body);
     delete user.password;
     const token = jwt.sign({ id: user.id }, JWT);
     res.json({ token, user });
@@ -113,7 +112,7 @@ app.post('/api/login', async(req, res, next)=> {
 });
 
 //this Route will logout a user
-app.post('/api/logout', async(req, res, next)=> {
+app.post('/api/users/logout', async(req, res, next)=> {
   try {
     await logoutUser(req.body);
     res.send('logged out');
@@ -124,7 +123,7 @@ app.post('/api/logout', async(req, res, next)=> {
 });
 
 //this Route will get the user's information
-app.get('/api/auth/me', isLoggedIn, async(req, res, next)=> {
+app.get('/api/users/me', isLoggedIn, async(req, res, next)=> {
   try {
     res.send(req.user);
   }
@@ -162,6 +161,17 @@ app.put('/api/users/:id', async(req, res, next)=> {
     next(ex);
   }
 });
+
+//this Route will update a user's password
+app.put('/api/users/password/:id', async(req, res, next)=> {
+  try {
+    res.send(await updatePassword(req.params.id, req.body));
+  }
+  catch(ex){
+    next(ex);
+  }
+});
+
 
 
 /*Product Routes*/
