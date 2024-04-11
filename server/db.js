@@ -17,19 +17,6 @@ const createTables = async()=> {
       username VARCHAR(100) UNIQUE NOT NULL,
       password VARCHAR(100) NOT NULL,
       email VARCHAR(100) UNIQUE NOT NULL,
-      firstName VARCHAR(100),
-      lastName VARCHAR(100),
-      isAdmin BOOLEAN,
-      createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      stripeCustomerId VARCHAR(100),
-      balance INTEGER,
-      currency VARCHAR(10),
-      default_source VARCHAR(100),
-      delinquent BOOLEAN,
-      invoice_prefix VARCHAR(10),
-      livemode BOOLEAN,
-      phone VARCHAR(20),
-      tax_exempt VARCHAR(20)
     );
 
     CREATE TABLE IF NOT EXISTS products(
@@ -37,21 +24,7 @@ const createTables = async()=> {
       name VARCHAR(100) UNIQUE NOT NULL,
       description TEXT,
       price DECIMAL(10, 2),
-      category UUID REFERENCES categories(category_id),
-      stock INTEGER,
-      rating DECIMAL(2, 1),
-      imageUrl VARCHAR(100),
-      stripeProductId VARCHAR(100),
-      active BOOLEAN,
-      created TIMESTAMP,
-      default_price DECIMAL(10, 2),
-      features TEXT,
-      package_dimensions VARCHAR(100),
-      shippable BOOLEAN,
-      statement_descriptor VARCHAR(100),
-      tax_code VARCHAR(100),
-      unit_label VARCHAR(100),
-      url VARCHAR(100)
+      category varchar(100),
     );
 
     CREATE TABLE IF NOT EXISTS carts(
@@ -113,46 +86,46 @@ const eraseTables = async()=> {
 };
 
 //Create user is going to take the inputed information from the user and add it to the database
-const createUser = async({ username, password, email, isAdmin, firstName, lastName })=> {
+const createUser = async({ username, password, email})=> {
   const SALT_COUNT = 10;
   const hashedPassword = await bcrypt.hash(password, SALT_COUNT);
   const SQL = `
-    INSERT INTO users(id, username, password, email, isAdmin, firstName, lastName) 
-    VALUES($1, $2, $3, $4, $5, $6, $7) 
+    INSERT INTO users(id, username, password, email) 
+    VALUES($1, $2, $3, $4) 
     RETURNING *
   `;
-  const response = await client.query(SQL, [uuid.v4(), username, hashedPassword, email, isAdmin, firstName, lastName]);
+  const response = await client.query(SQL, [uuid.v4(), username, hashedPassword, email]);
   return response.rows[0];
 };
 
 //Authenticate is going to take the inputed information from the user and check it against the database to see if it is correct
-const authenticate = async({ username, password })=> {
-  const SQL = `
-    SELECT id, username, password FROM users WHERE username=$1;
-  `;
+const authenticate = async({ username, password }) => {
+  const SQL = 'SELECT * FROM users WHERE username=$1';
   const response = await client.query(SQL, [username]);
-  if(!response.rows.length || (await bcrypt.compare(password, response.rows[0].password)) === false){
-    const error = Error('not authorized');
+  const user = response.rows[0];
+  if(!user || !(await bcrypt.compare(password, user.password))){
+    const error = Error('Invalid credentials');
     error.status = 401;
     throw error;
   }
-  const token = await jwt.sign({ id: response.rows[0].id}, JWT);
+  const token = jwt.sign({ id: user.id }, JWT);
   return { token };
 };
 
 const findUserWithToken = async(token)=> {
   let id;
-  try{
-    const payload = await jwt.verify(token, JWT);
+  try {
+    const payload = jwt.verify(token, JWT);
     id = payload.id;
-  }
-  catch(ex){
+  } catch(ex){
     const error = Error('not authorized');
     error.status = 401;
     throw error;
   }
   const SQL = `
-    SELECT id, username FROM users WHERE id=$1;
+    SELECT id, username 
+    FROM users 
+    WHERE id=$1;
   `;
   const response = await client.query(SQL, [id]);
   if(!response.rows.length){
@@ -162,6 +135,8 @@ const findUserWithToken = async(token)=> {
   }
   return response.rows[0];
 };
+
+
 //Fetch users is going to return all the users from the database
 const fetchUsers = async()=> {
   const SQL = `
@@ -172,11 +147,11 @@ const fetchUsers = async()=> {
 };
 
 //fetchSingleUser is going to return a single user from the database
-fetchSingleUser = async(id)=> {
+fetchSingleUser = async(user_id)=> {
   const SQL = `
     SELECT * FROM users WHERE id=$1;
   `;
-  const response = await client.query(SQL, [id]);
+  const response = await client.query(SQL, [user_id]);
   return response.rows[0];
 };
 
@@ -196,11 +171,11 @@ updateUser = async({ username, password, email, isAdmin, firstName, lastName })=
 };
 
 //deleteUser is going to delete a user from the database
-deleteUser = async(id)=> {
+deleteUser = async(user_id)=> {
   const SQL = `
     DELETE FROM users WHERE id=$1;
   `;
-  await client.query(SQL, [id]);
+  await client.query(SQL, [user_id]);
 };
 
 

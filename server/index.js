@@ -65,7 +65,17 @@ app.use('/assets', express.static(path.join(__dirname, '../client/dist/assets'))
 //this middleware will check if a user is logged dont
 const isLoggedIn = async(req, res, next)=> {
   try{
-    req.user = await findUserWithToken(req.headers.authorization);
+    if (req.headers.authorization) {
+      const user = await findUserWithToken(req.headers.authorization);
+      req.user = user;
+    } else if (req.body.username) {
+      const user = await fetchSingleUser(req.body.username);
+      if (user) {
+        req.user = user;
+      } else {
+        throw new Error('User not found');
+      }
+    }
     next();
   }
   catch(ex){
@@ -84,15 +94,16 @@ const calculateTotal = (cart)=> {
 /*User Routes*/
 
 //this Route will create a new user
-app.post('/api/users', async(req, res, next)=> {
+app.post('/api/auth/register', async(req, res)=> {
   try {
-    const user = await createUser(req.body);
+    const { username, password, email} = req.body;
+    const hash = await bcrypt.hash(password, 10);
+    const user = await createUser({ ...req.body, password: hash });
     delete user.password;
-    const token = jwt.sign({ id: user.id }, JWT);
-    res.json({ token, user });
+    res.status(201).json({message: 'user created'})
   }
-  catch(ex){
-    next(ex);
+  catch(err){
+    res.status(401).send({ error: 'signup failed' });
   }
 });
 
@@ -108,17 +119,18 @@ app.get('/api/users/:id', async(req, res, next)=> {
 });
 
 //this Route will login a user
-app.post('/api/auth/login', async(req, res, next)=> {
+app.post('/api/auth/login', async(req, res)=> {
   try {
-    res.send(await authenticate(req.body));
+    const token = await authenticate(req.body);
+    res.send({ token });
   }
-  catch(ex){
-    next(ex);
+  catch(err){
+    res.status(401).send({ error: 'login failed' });
   }
 });
 
-//this Route will get the user's information
-app.get('/api/auth/me', isLoggedIn, (req, res, next)=> {
+//this Route will get the user's information via token
+app.get('/api/auth/me', isLoggedIn, async(req, res, next)=> {
   try {
     res.send(req.user);
   }
