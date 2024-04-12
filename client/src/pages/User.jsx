@@ -1,42 +1,24 @@
 /* eslint-disable no-unused-vars */
 import { useState, useEffect } from 'react';
-import Nav from './Nav';
-import { useNavigate } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
+import { loadStripe } from "@stripe/stripe-js";
+import { Elements } from "@stripe/react-stripe-js";
+import {Stripe} from 'stripe';
+
+
+const stripe = Stripe('pk_test_51P1xxdRtrA9vWRxferYJpecA2yHKCBzGW9HQmy17gCnGPPETiKABpwHNfS4wWn29vJWmrns9UZOQlyJw7aNzsyEF00V1gnLNri');
+
 
 const User = ({ auth }) => {
-  const [user, setUser] = useState({});
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    const fetchUser = async () => {
-      const token = window.localStorage.getItem('token');
-      if (token) {
-        const response = await fetch('/api/auth/me', {
-          headers: {
-            authorization: token,
-          },
-        });
-        const json = await response.json();
-        if (response.ok) {
-          setUser(json);
-        } else {
-          window.localStorage.removeItem('token');
-          navigate('/login');
-        }
-      } else {
-        navigate('/login');
-      }
-    };
-    fetchUser();
-  }, [navigate]);
+  if (!auth) {
+    return <Navigate to="/" />;
+  }
 
   return (
     <div>
-      <h1>User</h1>
-      <h2>Welcome {user.username}</h2>
-      <p>Email: {user.email}</p>
-    </div>
+      <h1>Welcome, {auth.username}</h1>
+      </div>
   );
-};
+}
 
 export default User;

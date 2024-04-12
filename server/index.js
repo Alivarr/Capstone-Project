@@ -1,47 +1,39 @@
 const {
   client,
   createTables,
-  createUser,
-  fetchUsers,
-  authenticate,
-  findUserWithToken,
-  createProducts,
-  getProducts,
-  getSingleProduct,
-  createCart,
-  getCart,
-  updateCart,
-  createOrder,
-  getOrders,
-  createReview,
-  getLimitedProducts,
-  getCategories,
-  getSingleCategory,
-  getAllCarts,
-  deleteUser,
-  updateUser,
-  deleteProduct,
-  updateProduct,
-  deleteCart,
-  fetchSingleUser,
-  getUsersReviews,
-  getReviews,
-  deleteReview,
-  getUserAccountInfo,
-  getUserOrders,
-  getCartProducts,
-  addProductToCart,
-  deleteProductFromCart,
   eraseTables,
-  createCategory,
-  updateCategory,
-  deleteCategory,
-  checkUserExists,
-  checkProductExists,
-  checkCategoryExists,
-  checkReviewExists,
-  checkCartExists,
-  checkOrderExists
+  createUser,
+  authenticate,
+ // findUserWithToken,
+  fetchUsers,
+  fetchSingleUser,
+  updateUser,
+  deleteUser,
+  createitems,
+  fetchitems,
+  fetchLimiteditems,
+  fetchSingleitem,
+  updateitem,
+  deleteitem,
+  fetchOrders,
+  createOrder,
+  deleteOrder,
+  updateOrder,
+  createOrderitem,
+  deleteOrderitem,
+  updateOrderitem,
+  fetchCart,
+  createCart,
+  deleteCart,
+  updateCart,
+  fetchUsersCart,
+  createCartitem,
+  updateCartitem,
+  fetchCartitems,
+  additemToCart,
+  deleteitemFromCart,
+  checkitemExists,
+  checkUserExists
 } = require('./db');
 require('dotenv').config();
 const express = require('express');
@@ -59,24 +51,31 @@ const stripe = require('stripe')(process.env.STRIPE_API_KEY);
 //for deployment only
 const path = require('path');
 const { en } = require('faker/lib/locales');
-app.get('/', (req, res)=> res.sendFile(path.join(__dirname, '../client/dist/index.html')));
-app.use('/assets', express.static(path.join(__dirname, '../client/dist/assets'))); 
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, '../client/dist/index.html')));
+app.use('/assets', express.static(path.join(__dirname, '../client/dist/assets')));
+  
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.path}`);
+  next();
+});
+
+
 
 //this middleware will check if a user is logged dont
-const isLoggedIn = async(req, res, next)=> {
-  try{
-    req.user = await findUserWithToken(req.headers.authorization);
+function isLoggedIn(req, res, next){
+  const token = req.headers.authorization;
+  try {
+    const user = jwt.verify(token, JWT);
+    req.user = user;
     next();
+  } catch (ex) {
+    res.status(401).send({ error: 'Invalid token' });
   }
-  catch(ex){
-    next(ex);
-  }
-};
+}
 
-const calculateTotal = (cart)=> {
-  return cart.reduce((acc, product)=> {
-    return acc + product.price;
-  }, 0);
+//this function will calculate the total of the items in the cart
+const calculateTotal = (items) => {
+  return items.reduce((acc, item) => acc + item.price * item.quantity, 0);
 };
 
 
@@ -84,472 +83,371 @@ const calculateTotal = (cart)=> {
 /*User Routes*/
 
 //this Route will create a new user
-app.post('/api/users', async(req, res, next)=> {
+app.post('/api/auth/register', async (req, res) => {
   try {
     const user = await createUser(req.body);
-    delete user.password;
-    const token = jwt.sign({ id: user.id }, JWT);
-    res.json({ token, user });
-  }
-  catch(ex){
-    next(ex);
+    res.status(201).send(user);
+  } catch (err) {
+    res.status(400).send(err.message);
   }
 });
 
 
-//this Route will get a single user
-app.get('/api/users/:id', async(req, res, next)=> {
+//this Route will fetch a single user
+app.get('/api/users/:id', async (req, res, next) => {
   try {
     res.send(await fetchSingleUser(req.params.id));
   }
-  catch(ex){
+  catch (ex) {
     next(ex);
   }
 });
 
-//this Route will login a user
-app.post('/api/auth/login', async(req, res, next)=> {
+//this Route will login a user then return a token.
+app.post('/api/auth/login', async (req, res, next) => {
   try {
-    res.send(await authenticate(req.body));
-  }
-  catch(ex){
+    const token = await authenticate(req.body);
+    res.send({ token });
+  } catch (ex) {
     next(ex);
   }
 });
 
-//this Route will get the user's information
-app.get('/api/auth/me', isLoggedIn, (req, res, next)=> {
-  try {
-    res.send(req.user);
-  }
-  catch(ex){
-    next(ex);
-  }
-});
-
-//this Route will logout a user
-app.post('/api/users/logout', async(req, res, next)=> {
-  try {
-    await logoutUser(req.body);
-    res.send('logged out');
-  }
-  catch(ex){
-    next(ex);
-  }
-});
-
-//this Route will get the user's information
-app.get('/api/users/me', isLoggedIn, async(req, res, next)=> {
+//this Route will fetch the user's information via token
+app.get('/api/auth/me', isLoggedIn, async (req, res, next) => {
   try {
     res.send(req.user);
   }
-  catch(ex){
+  catch (ex) {
+    next(ex);
+  }
+});
+
+//this route should log a user out by removing the token
+app.get('/api/auth/logout', async (req, res, next) => {
+  try {
+    res.send({ message: 'logged out' });
+  }
+  catch (ex) {
+    next(ex);
+  }
+});
+
+//this Route will delete a user
+app.delete('/api/users/:id', async (req, res, next) => {
+  try {
+    res.send(await deleteUser(req.params.id));
+  }
+  catch (ex) {
     next(ex);
   }
 });
 
 //this Route will return all users, for admin use only
-app.get('/api/users', async(req, res, next)=> {
+app.get('/api/users', async (req, res, next) => {
   try {
     res.send(await fetchUsers());
   }
-  catch(ex){
+  catch (ex) {
     next(ex);
   }
 });
 
-//this Route will delete a user, for admin use only (would technically be accessable by the user in their account)
-app.delete('/api/users/:id', async(req, res, next)=> {
-  try {
-    res.send(await deleteUser(req.params.id));
-  }
-  catch(ex){
-    next(ex);
-  }
-});
-
-//this Route will update a user for when they change any of their information
-app.put('/api/users/:id', async(req, res, next)=> {
+//this Route will update a user's information
+app.put('/api/users/:id', async (req, res, next) => {
   try {
     res.send(await updateUser(req.params.id, req.body));
   }
-  catch(ex){
+  catch (ex) {
     next(ex);
   }
 });
 
-//this Route will update a user's password
-app.put('/api/users/password/:id', async(req, res, next)=> {
+/*item Routes*/
+
+//this Route will create a new item, for admin use only
+app.post('/api/items', async (req, res, next) => {
   try {
-    res.send(await updatePassword(req.params.id, req.body));
+    res.send(await createitems(req.body));
   }
-  catch(ex){
+  catch (ex) {
     next(ex);
   }
 });
 
-
-
-/*Product Routes*/
-
-//this Route will create a new product, for admin use only
-app.post('/api/products', async(req, res, next)=> {
+//this Route will fetch all items
+app.get('/api/items', async (req, res, next) => {
   try {
-    res.send(await createProducts(req.body));
+    res.send(await fetchitems());
   }
-  catch(ex){
+  catch (ex) {
     next(ex);
   }
 });
 
-//this Route will get all products
-app.get('/api/products', async(req, res, next)=> {
+//this Route will fetch a single item
+app.get('/api/items/:id', async (req, res, next) => {
   try {
-    res.send(await getProducts());
+    res.send(await fetchSingleitem(req.params.id));
   }
-  catch(ex){
+  catch (ex) {
     next(ex);
   }
 });
 
-//this Route will get a single product
-app.get('/api/products/:id', async(req, res, next)=> {
+//this Route will fetch a limited number of items
+app.get('/api/items/limited', async (req, res, next) => {
   try {
-    res.send(await getSingleProduct(req.params.id));
+    res.send(await fetchLimiteditems());
   }
-  catch(ex){
+  catch (ex) {
     next(ex);
   }
 });
 
-//this Route will get a limited number of products
-app.get('/api/products/limited', async(req, res, next)=> {
+//this Route will delete a item, for admin use only
+app.delete('/api/items/:id', async (req, res, next) => {
   try {
-    res.send(await getLimitedProducts());
+    res.send(await deleteitem(req.params.id));
   }
-  catch(ex){
+  catch (ex) {
     next(ex);
   }
 });
 
-//this Route will delete a product, for admin use only
-app.delete('/api/products/:id', async(req, res, next)=> {
+//this Route will update a item, for admin use only
+app.put('/api/items/:id', async (req, res, next) => {
   try {
-    res.send(await deleteProduct(req.params.id));
+    res.send(await updateitem(req.params.id, req.body));
   }
-  catch(ex){
+  catch (ex) {
     next(ex);
   }
 });
 
-//this Route will update a product, for admin use only
-app.put('/api/products/:id', async(req, res, next)=> {
+//this Route will add a item to the cart making it a cart item
+app.post('/api/cart/items', async (req, res, next) => {
   try {
-    res.send(await updateProduct(req.params.id, req.body));
+    res.send(await additemToCart(req.body));
   }
-  catch(ex){
+  catch (ex) {
     next(ex);
   }
-}); 
+});
+
+//this Route will delete a item from the cart
+app.delete('/api/cart/items/:id', async (req, res, next) => {
+  try {
+    res.send(await deleteitemFromCart(req.params.id));
+  }
+  catch (ex) {
+    next(ex);
+  }
+});
+
+//this Route will fetch all items in the cart
+app.get('/api/cart/items', async (req, res, next) => {
+  try {
+    res.send(await fetchCartitems());
+  }
+  catch (ex) {
+    next(ex);
+  }
+});
+
+//this Route will update a item in the cart
+app.put('/api/cart/items/:id', async (req, res, next) => {
+  try {
+    res.send(await updateCartitem(req.params.id, req.body));
+  }
+  catch (ex) {
+    next(ex);
+  }
+});
 
 /*Cart Routes*/
 
-//this Route will create a new cart for a user
-app.post('/api/carts/:userId', async(req, res, next)=> {
+//this Route will fetch all carts, for admin use only
+app.get('/api/carts', async (req, res, next) => {
   try {
-    res.send(await createCart(req.params.userId));
+    res.send(await fetchCart());
   }
-  catch(ex){
+  catch (ex) {
     next(ex);
   }
 });
 
-//this Route will get a user's cart
-app.get('/api/carts/:userId', async(req, res, next)=> {
+//this Route will create a new cart
+app.post('/api/carts', async (req, res, next) => {
   try {
-    res.send(await getCart(req.params.userId));
+    res.send(await createCart(req.body));
   }
-  catch(ex){
+  catch (ex) {
     next(ex);
   }
 });
 
-//this Route will update a user's cart
-app.put('/api/carts/:userId', async(req, res, next)=> {
-  try {
-    res.send(await updateCart(req.params.userId, req.body));
-  }
-  catch(ex){
-    next(ex);
-  }
-});
-
-//this Route will get all carts, for admin use only
-app.get('/api/carts', async(req, res, next)=> {
-  try {
-    res.send(await getAllCarts());
-  }
-  catch(ex){
-    next(ex);
-  }
-});
-
-//this Route will delete a user's cart, for admin use/user only
-app.delete('/api/carts/:id', async(req, res, next)=> {
+//this Route will delete a cart, for admin use only
+app.delete('/api/carts/:id', async (req, res, next) => {
   try {
     res.send(await deleteCart(req.params.id));
   }
-  catch(ex){
+  catch (ex) {
     next(ex);
   }
 });
 
+//this Route will update a cart
+app.put('/api/carts/:id', async (req, res, next) => {
+  try {
+    res.send(await updateCart(req.params.id, req.body));
+  }
+  catch (ex) {
+    next(ex);
+  }
+});
 
-/*TIER 2 Routes*/
+//this Route will fetch a user's cart
+app.get('/api/users/:id/cart', async (req, res, next) => {
+  try {
+    res.send(await fetchUsersCart(req.params.id));
+  }
+  catch (ex) {
+    next(ex);
+  }
+});
+
+//this Route will create a new cart item
+app.post('/api/cart/items', async (req, res, next) => {
+  try {
+    res.send(await createCartitem(req.body));
+  }
+  catch (ex) {
+    next(ex);
+  }
+});
+
+//this Route will update a cart item
+app.put('/api/cart/items/:id', async (req, res, next) => {
+  try {
+    res.send(await updateCartitem(req.params.id, req.body));
+  }
+  catch (ex) {
+    next(ex);
+  }
+});
+
+//this Route will delete a cart item
+app.delete('/api/cart/items/:id', async (req, res, next) => {
+  try {
+    res.send(await deleteCartitem(req.params.id));
+  }
+  catch (ex) {
+    next(ex);
+  }
+});
 
 /*Order Routes*/
 
-//this Route will create a new order for a user
-app.post('/api/orders/:userId', async(req, res, next)=> {
+//this Route will fetch all orders, for admin use only
+app.get('/api/orders', async (req, res, next) => {
   try {
-    res.send(await createOrder(req.params.userId, req.body));
+    res.send(await fetchOrders());
   }
-  catch(ex){
+  catch (ex) {
     next(ex);
   }
 });
 
-//this Route will get all orders for a user
-app.get('/api/orders/:userId', async(req, res, next)=> {
+//this Route will create a new order
+app.post('/api/orders', async (req, res, next) => {
   try {
-    res.send(await getOrders(req.params.userId));
+    res.send(await createOrder(req.body));
   }
-  catch(ex){
+  catch (ex) {
     next(ex);
   }
 });
 
-/*Category Routes*/
-
-//this Route will get all categories
-app.get('/api/categories', async(req, res, next)=> {
+//this Route will delete an order, for admin use only
+app.delete('/api/orders/:id', async (req, res, next) => {
   try {
-    res.send(await getCategories());
+    res.send(await deleteOrder(req.params.id));
   }
-  catch(ex){
+  catch (ex) {
     next(ex);
   }
 });
 
-//this Route will get a single category
-app.get('/api/categories/:id', async(req, res, next)=> {
+//this Route will update an order
+app.put('/api/orders/:id', async (req, res, next) => {
   try {
-    res.send(await getSingleCategory(req.params.id));
+    res.send(await updateOrder(req.params.id, req.body));
   }
-  catch(ex){
+  catch (ex) {
     next(ex);
   }
 });
 
-//this Route will create a new category, for admin use only
-app.post('/api/categories', async(req, res, next)=> {
+//this Route will create a new order item
+app.post('/api/order/items', async (req, res, next) => {
   try {
-    res.send(await createCategory(req.body));
+    res.send(await createOrderitem(req.body));
   }
-  catch(ex){
+  catch (ex) {
     next(ex);
   }
 });
 
-//this Route will update a category, for admin use only
-app.put('/api/categories/:id', async(req, res, next)=> {
+//this Route will update an order item
+app.put('/api/order/items/:id', async (req, res, next) => {
   try {
-    res.send(await updateCategory(req.params.id, req.body));
+    res.send(await updateOrderitem(req.params.id, req.body));
   }
-  catch(ex){
+  catch (ex) {
     next(ex);
   }
 });
 
-//this Route will delete a category, for admin use only
-app.delete('/api/categories/:id', async(req, res, next)=> {
+//this Route will delete an order item
+app.delete('/api/order/items/:id', async (req, res, next) => {
   try {
-    res.send(await deleteCategory(req.params.id));
+    res.send(await deleteOrderitem(req.params.id));
   }
-  catch(ex){
-    next(ex);
-  }
-});
-
-
-
-/*Review Routes*/
-
-//this Route will create a new review for a product
-app.post('/api/reviews/:productId', async(req, res, next)=> {
-  try {
-    res.send(await createReview(req.params.productId, req.body));
-  }
-  catch(ex){
-    next(ex);
-  }
-});
-
-//this Route will get all reviews for a product
-app.get('/api/reviews/:productId', async(req, res, next)=> {
-  try {
-    res.send(await getReviews(req.params.productId));
-  }
-  catch(ex){
-    next(ex);
-  }
-});
-
-//this Route will delete a review, for admin use only
-app.delete('/api/reviews/:id', async(req, res, next)=> {
-  try {
-    res.send(await deleteReview(req.params.id));
-  }
-  catch(ex){
-    next(ex);
-  }
-});
-
-//this Route will get all reviews for a user
-app.get('/api/reviews/:userId', async(req, res, next)=> {
-  try {
-    res.send(await getUsersReviews(req.params.userId));
-  }
-  catch(ex){
-    next(ex);
-  }
-});
-
-/*User Account Info Routes*/
-
-//this Route will get a user's account information
-app.get('/api/account/:userId', async(req, res, next)=> {
-  try {
-    res.send(await getUserAccountInfo(req.params.userId));
-  }
-  catch(ex){
-    next(ex);
-  }
-});
-
-//this Route will get all orders for a user
-app.get('/api/account/orders/:userId', async(req, res, next)=> {
-  try {
-    res.send(await getUserOrders(req.params.userId));
-  }
-  catch(ex){
-    next(ex);
-  }
-});
-
-/*Cart Product Routes*/
-
-//this Route will get all products in a user's cart
-app.get('/api/cart/products/:userId', async(req, res, next)=> {
-  try {
-    res.send(await getCartProducts(req.params.userId));
-  }
-  catch(ex){
-    next(ex);
-  }
-});
-
-//this Route will add a product to a user's cart
-app.post('/api/cart/products/:userId', async(req, res, next)=> {
-  try {
-    res.send(await addProductToCart(req.params.userId, req.body));
-  }
-  catch(ex){
-    next(ex);
-  }
-});
-
-//this Route will delete a product from a user's cart
-app.delete('/api/cart/products/:userId', async(req, res, next)=> {
-  try {
-    res.send(await deleteProductFromCart(req.params.userId, req.body));
-  }
-  catch(ex){
+  catch (ex) {
     next(ex);
   }
 });
 
 
 /*Error Handling*/
-app.use((err, req, res, next)=> {
+app.use((err, req, res, next) => {
   console.log(err);
   res.status(err.status || 500).send({ error: err.message ? err.message : err });
 });
 
 
-/*checker routes*/
-
-//this Route will check if a user exists
-app.get('/api/check/user/:userId', async(req, res, next)=> {
-  try {
-    res.send(await checkUserExists(req.params.userId));
-  }
-  catch(ex){
-    next(ex);
-  }
-});
-
-//this Route will check if a product exists
-app.get('/api/check/product/:productId', async(req, res, next)=> {
-  try {
-    res.send(await checkProductExists(req.params.productId));
-  }
-  catch(ex){
-    next(ex);
-  }
-});
-
-//this Route will check if a category exists
-app.get('/api/check/category/:categoryId', async(req, res, next)=> {
-  try {
-    res.send(await checkCategoryExists(req.params.categoryId));
-  }
-  catch(ex){
-    next(ex);
-  }
-});
-
 /*Stripe Routes*/
-//create payment intent
-app.post('/api/payment-intent', async(req, res, next)=> {
-  const { items } = req.body;
-  const payIntent = await stripe.paymentIntents.create({
-    amount: calculateTotal(items),
-    currency: 'usd',
-  automatic_payment_method: {
-    enabled: true,
-  },
-});
+app.post('/api/create-checkout-session', async (req, res) => {
+  const session = await stripe.checkout.sessions.create({
+    payment_method_types: ['card'],
+    line_items: req.body.items.map(item => ({
+      price_data: {
+        currency: 'usd',
+        item_data: {
+          name: item.name,
+          images: [item.imageUrl]
+        },
+        unit_amount: item.price * 100
+      },
+      quantity: item.quantity
+    })),
+    mode: 'payment',
+    success_url: `${req.headers.origin}/`,
+    cancel_url: `${req.headers.origin}/cart`
+  });
 
-res.json({ clientSecret: payIntent.client_secret });
-});
-
-
-//this Route will create a new checkout session
-app.post('/api/checkout', async(req, res, next)=> {
-  try{
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      line_items: req.body,
-      mode: 'payment',
-      success_url: `${req.headers.origin}`,
-      cancel_url: `${req.headers.origin}`
-    });
-
-    res.json({ id: session.id });
-  } catch(ex){
-    next(ex);
-  }
+  res.json({ id: session.id });
 });
 
 
@@ -557,62 +455,43 @@ app.post('/api/checkout', async(req, res, next)=> {
 /*debug variables*/
 
 
-const init = async()=> {
+const init = async () => {
   const port = process.env.PORT || 3000;
   await client.connect();
   console.log('connected to database');
 
-// Create tables
+  // Create tables
   await createTables();
-    // Seed tables
+  // Seed tables
 
 
-  // const [ category1, category2, category3, category4 ] = await Promise.all([
-  //   createCategory({
-  //     name: 'Category 1',
-  //     description: 'This is category 1'
-  //   }),
-  //   createCategory({
-  //     name: 'Category 2',
-  //     description: 'This is category 2'
-  //   }),
-  //   createCategory({
-  //     name: 'Category 3',
-  //     description: 'This is category 3'
-  //   }),
-  //   createCategory({
-  //     name: 'Category 4',
-  //     description: 'This is category 4'
-  //   })
-  // ]);
-
-  // const [ productA, productB, productC, productD ] = await Promise.all([
-  //   createProducts({
-  //     name: 'Product A',
-  //     description: 'This is product A',
-  //     price: 100,
-  //     rating: 4.5,
+  // const [ itemA, itemB, itemC, itemD ] = await Promise.all([
+  //   createitems({
+  //     name: 'item A',
+  //     description: 'This is item A',
+  //     price: 10.00,
+  //     category: 'Minis',
   //     imageUrl: 'https://picsum.photos/200/300'
   //   }),
-  //   createProducts({
-  //     name: 'Product B',
-  //     description: 'This is product B',
-  //     price: 200,
-  //     rating: 3.5,
+  //   createitems({
+  //     name: 'item B',
+  //     description: 'This is item B',
+  //     price: 20.0,
+  //     category: 'Minis',
   //     imageUrl: 'https://picsum.photos/200/300'
   //   }),
-  //   createProducts({
-  //     name: 'Product C',
-  //     description: 'This is product C',
-  //     price: 300,
-  //     rating: 5,
+  //   createitems({
+  //     name: 'item C',
+  //     description: 'This is item C',
+  //     price: 30.0,
+  //     category: 'TTRPG',
   //     imageUrl: 'https://picsum.photos/200/300'
   //   }),
-  //   createProducts({
-  //     name: 'Product D',
-  //     description: 'This is product D',
-  //     price: 400,
-  //     rating: 4,
+  //   createitems({
+  //     name: 'item D',
+  //     description: 'This is item D',
+  //     price: 40.0,
+  //     category: 'TTRPG',
   //     imageUrl: 'https://picsum.photos/200/300'
   //   })
   // ]);
@@ -622,51 +501,77 @@ const init = async()=> {
   //       username: 'johndoe',
   //       password: 'password123',
   //       email: 'johndoe@example.com',
-  //       firstName: 'John',
-  //       lastName: 'Doe',
-  //       isAdmin: true,
-  //       favorite_number: 7
   //     }),
   //     createUser({
   //       username: 'janedoe',
   //       password: 'password456',
   //       email: 'janedoe@example.com',
-  //       firstName: 'Jane',
-  //       lastName: 'Doe',
-  //       isAdmin: false,
-  //       favorite_number: 3
   //     }),
   //     createUser({
   //       username: 'bobsmith',
   //       password: 'password789',
   //       email: 'bobsmith@example.com',
-  //       firstName: 'Bob',
-  //       lastName: 'Smith',
-  //       isAdmin: false,
-  //       favorite_number: 4
-  //     }),
+  //       }),
   //     createUser({
   //       username: 'alicejohnson',
   //       password: 'password1011',
   //       email: 'alicejohnson@example.com',
-  //       firstName: 'Alice',
-  //       lastName: 'Johnson',
-  //       isAdmin: false,
-  //       favorite_number: 5
-  //     })
+  //       })
   //   ]);
 
+  //     const [ cartA, cartB, cartC, cartD ] = await Promise.all([
+  //       createCart({
+  //         userId: johndoe.id,
+  //         status: 'active'
+  //       }),
+  //       createCart({
+  //         userId: janedoe.id,
+  //         status: 'active'
+  //       }),
+  //       createCart({
+  //         userId: bobsmith.id,
+  //         status: 'active'
+  //       }),
+  //       createCart({
+  //         userId: alicejohnson.id,
+  //         status: 'active'
+  //       })
+  //     ]);
 
-    //need to make a console log to validate each thing was created (only users and products for now)
-    // console.log('users:', johndoe, janedoe, bobsmith, alicejohnson);
-    // console.log('products:', productA, productB, productC, productD);
-    
-  // //Erase tables
- // await eraseTables();
+  //     const [ cartitemA, cartitemB, cartitemC, cartitemD ] = await Promise.all([
+  //       createCartitem({
+  //         cartId: cartA.id,
+  //         itemId: itemA.id,
+  //         quantity: 1
+  //       }),
+  //       createCartitem({
+  //         cartId: cartB.id,
+  //         itemId: itemB.id,
+  //         quantity: 2
+  //       }),
+  //       createCartitem({
+  //         cartId: cartC.id,
+  //         itemId: itemC.id,
+  //         quantity: 3
+  //       }),
+  //       createCartitem({
+  //         cartId: cartD.id,
+  //         itemId: itemD.id,
+  //         quantity: 4
+  //       })
+  //     ]);
+
+
+  //need to make a console log to validate each thing was created (only users and items for now)
+  // console.log('users:', johndoe, janedoe, bobsmith, alicejohnson);
+  // console.log('items:', itemA, itemB, itemC, itemD);
+
+  //Erase tables
+ //await eraseTables();
 
 
 
-  app.listen(port, ()=> console.log(`listening on port ${port}`));
+  app.listen(port, () => console.log(`listening on port ${port}`));
 };
 
 init();
