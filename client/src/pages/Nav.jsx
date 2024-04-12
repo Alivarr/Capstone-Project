@@ -1,23 +1,31 @@
 /* eslint-disable no-unused-vars */
 /* eslint-disable no-undef */
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
 const Nav = ({ auth }) => {
+  const [isOpen, setIsOpen] = useState(false);
+
   return (
-    <nav>
-      <Link to="/">Home</Link>
-      <Link to="/products">Products</Link>
-      {auth.token ? (
-        <>
-          <Link to="/user">User</Link>
-          <Link to="/cart">Cart</Link>
-          <Link to="/checkout">Checkout</Link>
-          <button onClick={auth.logout}>Logout</button>
-        </>
-      ) : (
-        <Link to="/login">Login</Link>
+    <div className='sidebar'>
+      {isOpen && (
+        <nav className={isOpen ? 'open' : ''}>
+          <li><Link to="/">Home</Link></li>
+          <li><Link to="/cart">Cart</Link></li>
+          <li><Link to="/items">Items</Link></li>
+          {!auth ? (
+            <Link to="/user">User</Link>
+          ) : (
+            <Link to="/">login</Link>
+          )}
+        </nav>
       )}
-    </nav>
+       <div className="hamburger" onClick={() => setIsOpen(!isOpen)}>
+        <div></div>
+        <div></div>
+        <div></div>
+      </div>
+    </div>
   );
 };
 

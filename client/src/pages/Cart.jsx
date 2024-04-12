@@ -1,41 +1,34 @@
-/* eslint-disable no-unused-vars */
-import { useState } from 'react';
-import CheckoutForm from './CheckoutForm';
+import { useStripe } from "@stripe/react-stripe-js";
+import { useState } from "react";
 
-const Cart = () => {
-  const [cartItems, setCartItems] = useState([]);
-
-  const addToCart = (product) => {
-    setCartItems([...cartItems, product]);
-  };
+const Cart = ({ items }) => {
+  const stripe = useStripe();
+  const [checkoutError, setCheckoutError] = useState(null);
 
   const handleCheckout = async () => {
-    const response = await fetch('/api/cart/checkout', {
+    const response = await fetch('/api/create-checkout-session', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(cartItems),
+      body: JSON.stringify({ items }),
     });
 
-    const data = await response.json();
-    console.log(data);
-  };
-  
+    if (response.ok) {
+      const { id } = await response.json();
+      const result = await stripe.redirectToCheckout({ sessionId: id });
+      if (result.error) {
+        setCheckoutError(result.error.message);
+      }
+    }
+  }
+
   return (
     <div>
-      {cartItems.map((item, index) => (
-        <div key={index}>
-          <h2>{item.product_name}</h2>
-          <p>{item.description}</p>
-          <p>{item.price}</p>
-          <img src={item.imageUrl} alt={item.product_name} />
-        </div>
-      ))}
       <button onClick={handleCheckout}>Checkout</button>
-      <CheckoutForm cartItems={cartItems} />
+      {checkoutError && <p>{checkoutError}</p>}
     </div>
   );
-};
+}
 
 export default Cart;

@@ -146,3 +146,52 @@ form {
   border-radius: 7px;
   padding: 40px;
 }
+
+
+.hamburger {
+  width: 2rem;
+  height: 2rem;
+  position: absolute;
+  top: 15px;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  cursor: pointer;
+  transform: translateX(0);
+}
+
+.hamburger div {
+  width: 2rem;
+  height: 0.25rem;
+  background-color: #333;
+
+}
+
+nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 200px;
+  height: 100vh;
+  overflow: auto;
+  background-color: #a3a4a4;
+  color: #000000;
+  padding: 20px;
+  transition: transform 0.3s ease;
+  transform: translateX(-100%);
+}
+
+nav li{
+  list-style: none;
+  margin: 10px 0;
+  color: #000000;
+}
+
+nav.open {
+  transform: translateX(0);
+}
+
+nav.open ~ .hamburger {
+  transform: translateX(calc(200px + 50px));
+}
